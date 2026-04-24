@@ -1,0 +1,65 @@
+version: '3'
+
+vars:
+  FEDORA_VERSION: '43'
+  KERNEL_VERSION: '6.19.10-200.fc43.x86_64'
+  NVIDIA: 'false'
+  IMAGE_NAME: 'calyx'
+
+tasks:
+  default:
+    cmds:
+      - task: list
+
+  list:
+    desc: "列出所有可用任务"
+    cmds:
+      - task --list
+
+  build:
+    desc: "构建 bootc 镜像 (用法: task build NVIDIA=true)"
+    deps: [chmod]
+    vars:
+      KERNEL_SHORT: '{{index (splitList "-" .KERNEL_VERSION) 0}}'
+      NVIDIA_SUFFIX: '{{if eq .NVIDIA "true"}}-nvidia{{else}}{{end}}'
+      FULL_TAG: '{{.FEDORA_VERSION}}-{{.KERNEL_SHORT}}{{.NVIDIA_SUFFIX}}'
+    cmds:
+      - echo "开始构建 {{.IMAGE_NAME}}:{{.FULL_TAG}} ..."
+      - >
+        podman build
+        --build-arg FEDORA_MAJOR_VERSION={{.FEDORA_VERSION}}
+        --build-arg KERNEL={{.KERNEL_VERSION}}
+        --build-arg NVIDIA_ENABLED={{.NVIDIA}}
+        -t {{.IMAGE_NAME}}:{{.FULL_TAG}}
+        -f Containerfile .
+      - echo "构建完成！镜像已存入本地 podman:{{.IMAGE_NAME}}:{{.FULL_TAG}}"
+
+  build-nvidia:
+    desc: "快捷构建 NVIDIA 版本"
+    cmds:
+      - task: build
+        vars:
+          NVIDIA: 'true'
+
+  run:
+    desc: "启动容器进行调试"
+    vars:
+      KERNEL_SHORT: '{{index (splitList "-" .KERNEL_VERSION) 0}}'
+      NVIDIA_SUFFIX: '{{if eq .NVIDIA "true"}}-nvidia{{else}}{{end}}'
+      FULL_TAG: '{{.FEDORA_VERSION}}-{{.KERNEL_SHORT}}{{.NVIDIA_SUFFIX}}'
+    cmds:
+      - echo "提示：由于是 bootc 镜像，直接 run 仅能检查文件系统，无法完全模拟真实启动。"
+      - podman run -it --rm {{.IMAGE_NAME}}:{{.FULL_TAG}} /bin/bash
+
+  iso:
+    desc: "(预留) 将镜像打包为 ISO"
+    cmds:
+      - echo "ISO 打包流程通常使用 bootc-image-builder。"
+      - echo "示例：sudo podman run --rm -it --privileged -v .:/output -v /var/run/docker.sock:/var/run/docker.sock quay.io/centos-bootc/bootc-image-builder --type iso {{.IMAGE_NAME}}:TAG"
+
+  chmod:
+    desc: "为所有脚本设置执行权限"
+    cmds:
+      - chmod +x scripts/base/*.sh
+      - chmod +x utils/*
+    silent: true

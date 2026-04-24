@@ -83,7 +83,7 @@ FEDORA_PACKAGES=(
 
     # --- [容器与虚拟化 / Container & Virtualization] ---
     podman
-    distrbox
+    distrobox
     flatpak-spawn            # 允许在 Flatpak 沙盒内调用宿主机命令
 
     # --- [终端工具 / Terminal Tools] ---
@@ -149,11 +149,28 @@ dnf5 -y install "${FEDORA_PACKAGES[@]}"
 # ==========================================================
 #  三方源软件包安装
 # ==========================================================
-# 安装 Tailscale
+# Tailscale
 echo "Installing tailscale from official repo..."
-dnf config-manager addrepo --from-repofile=https://pkgs.tailscale.com/stable/fedora/tailscale.repo
-dnf config-manager setopt tailscale-stable.enabled=0
-dnf -y install --enablerepo='tailscale-stable' tailscale
+dnf5 config-manager addrepo --from-repofile=https://pkgs.tailscale.com/stable/fedora/tailscale.repo
+dnf5 config-manager setopt tailscale-stable.enabled=0
+dnf5 -y install --enablerepo='tailscale-stable' tailscale
+
+# VSCode
+echo "Installing Visual Studio Code from Microsoft repo..."
+rpm --import https://packages.microsoft.com/keys/microsoft.asc
+
+cat <<EOF > /etc/yum.repos.d/vscode.repo
+[code]
+name=Visual Studio Code
+baseurl=https://packages.microsoft.com/yumrepos/vscode
+enabled=0
+autorefresh=1
+type=rpm-md
+gpgcheck=1
+gpgkey=https://packages.microsoft.com/keys/microsoft.asc
+EOF
+
+dnf5 -y install --enablerepo=code code
 
 # ==========================================================
 #  Copr 源软件包安装
@@ -166,7 +183,7 @@ copr_install_isolated "lizardbyte/beta" \
     "sunshine"
 
 # ==========================================================
-#  
+#  软件包排除
 # ==========================================================
 # Packages to exclude
 EXCLUDED_PACKAGES=(
@@ -205,8 +222,5 @@ if [[ "${#EXCLUDED_PACKAGES[@]}" -gt 0 ]]; then
     fi
 fi
 
-# Add Flathub to the image
-mkdir -p /etc/flatpak/remotes.d/
-curl --retry 3 -Lo /etc/flatpak/remotes.d/flathub.flatpakrepo https://dl.flathub.org/repo/flathub.flatpakrepo
 
 echo "::endgroup::"
