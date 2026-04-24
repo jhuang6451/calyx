@@ -13,7 +13,9 @@ ARG NVIDIA_ENABLED=false
 FROM ghcr.io/ublue-os/akmods:${AKMODS_FLAVOR}-${FEDORA_MAJOR_VERSION}-${KERNEL} AS akmods
 
 # NVIDIA 分支逻辑
-FROM scratch AS nvidia-false
+FROM ${BASE_IMAGE}:${FEDORA_MAJOR_VERSION} AS nvidia-false
+RUN mkdir -p /rpms /system_files
+
 FROM ghcr.io/ublue-os/akmods-nvidia-open:${AKMODS_FLAVOR}-${FEDORA_MAJOR_VERSION}-${KERNEL} AS nvidia-true
 
 # 根据 ARG 选择来源

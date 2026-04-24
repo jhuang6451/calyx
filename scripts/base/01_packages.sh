@@ -58,7 +58,7 @@ NEGATIVO_PACKAGES=(
 )
 
 echo "Installing ${#NEGATIVO_PACKAGES[@]} from Negativo..."
-dnf5 -y install "${NEGATIVO_PACKAGES[@]}"
+dnf5 -y install --setopt=install_weak_deps=False "${NEGATIVO_PACKAGES[@]}"
 
 # ==========================================================
 #  官方源软件包安装
@@ -144,7 +144,7 @@ esac
 dnf5 versionlock add plasma-desktop
 
 echo "Installing ${#FEDORA_PACKAGES[@]} packages from Fedora repos..."
-dnf5 -y install "${FEDORA_PACKAGES[@]}"
+dnf5 -y install --setopt=install_weak_deps=False "${FEDORA_PACKAGES[@]}"
 
 # ==========================================================
 #  三方源软件包安装
@@ -153,7 +153,7 @@ dnf5 -y install "${FEDORA_PACKAGES[@]}"
 echo "Installing tailscale from official repo..."
 dnf5 config-manager addrepo --from-repofile=https://pkgs.tailscale.com/stable/fedora/tailscale.repo
 dnf5 config-manager setopt tailscale-stable.enabled=0
-dnf5 -y install --enablerepo='tailscale-stable' tailscale
+dnf5 -y install --setopt=install_weak_deps=False --enablerepo='tailscale-stable' tailscale
 
 # VSCode
 echo "Installing Visual Studio Code from Microsoft repo..."
@@ -170,7 +170,7 @@ gpgcheck=1
 gpgkey=https://packages.microsoft.com/keys/microsoft.asc
 EOF
 
-dnf5 -y install --enablerepo=code code
+dnf5 -y install --setopt=install_weak_deps=False --enablerepo=code code
 
 # ==========================================================
 #  Copr 源软件包安装
