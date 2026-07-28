@@ -1,60 +1,62 @@
 # Calyx
 
-**Calyx** 是一个基于云原生容器技术打造的**个人定制化不可变操作系统镜像（Immutable OS Image）**。
+**English** | [简体中文](./README_zh.md)
 
-项目借鉴并参考了 [Aurora](https://github.com/get-aurora-dev/aurora) 的构建哲学与工程范式，以上游 [Universal Blue](https://github.com/ublue-os) 基础设施以及 Fedora Kinoite (KDE Plasma) 为核心底座，为个人桌面环境提供高稳定、开箱即用且声明式维护的系统体验。
+**Calyx** is a custom, personal **immutable operating system image** powered by cloud-native container technologies.
 
----
-
-## ✨ 核心特性
-
-- **不可变架构 (Bootc Native)**：基于 `bootc` (Container-as-a-system) 理念，将整个操作系统打包为 OCI 容器镜像。系统核心只读，原生防篡改与防系统损坏。
-- **现代化桌面与多媒体**：集成 KDE Plasma 6 桌面环境、完整版音视频硬件编解码支持（VA-API / QSV / NVENC）、Google Chrome 浏览器及一系列选定的开发与效率工具。
-- **开箱即用与极简优化**：剔除冗余的内置软件与后台服务，针对桌面响应速度、硬件功耗读取及输入法体验进行了针对性调优。
-- **多硬件版本支持**：提供 Intel/AMD 标准通用版本以及专为 NVIDIA 独立显卡优化的驱动版本。
+Inspired by the build philosophy and engineering paradigms of [Aurora](https://github.com/get-aurora-dev/aurora), Calyx uses upstream [Universal Blue](https://github.com/ublue-os) infrastructure and Fedora Kinoite (KDE Plasma 6) as its core base. It delivers a highly stable, out-of-the-box, and declaratively maintained desktop system experience.
 
 ---
 
-## 🚀 镜像使用指南
+## ✨ Features
 
-在任何支持 `bootc` 的操作系统（如 Fedora Silverblue / Kinoite / Universal Blue / Bazzite）中，均可通过标准 `bootc` 命令切换与管理 Calyx 系统镜像。
+- **Bootc Native Immutable Architecture**: Built on the `bootc` (Container-as-a-System) paradigm, packaging the entire operating system into an OCI container image. The system core is read-only, natively protecting against accidental tampering and system corruption.
+- **Modern Desktop & Multimedia Support**: Integrated KDE Plasma 6 desktop environment, complete hardware video decoding/encoding codecs (VA-API / QSV / NVENC), Google Chrome browser, and a selected set of developer & productivity tools.
+- **Out-of-the-Box Performance Tuning**: Unnecessary bloatware and background services removed. Fine-tuned for desktop responsiveness, NVIDIA high-performance/power-saving parameters (PAT & RTD3 D3cold sleep), CPU powercap monitoring (`btop`), and input method integration.
+- **Multi-Hardware Variants**: Offers a standard general-purpose image for Intel/AMD graphics as well as an optimized variant for NVIDIA discrete GPUs.
 
-### 1. 切换至 Calyx 系统镜像
+---
 
-#### 标准通用版 (Intel / AMD 核显及独显)
+## 🚀 Usage Guide
+
+On any system supporting `bootc` (such as Fedora Silverblue / Kinoite / Universal Blue / Bazzite), you can easily switch to and manage Calyx system images using standard `bootc` commands.
+
+### 1. Switching to Calyx Image
+
+#### Standard Variant (Intel / AMD Integrated & Discrete GPUs)
 ```bash
 sudo bootc switch ghcr.io/jhuang6451/calyx:latest
 ```
 
-#### NVIDIA 显卡驱动版
+#### NVIDIA Variant (Proprietary NVIDIA Driver & Performance Optimizations)
 ```bash
 sudo bootc switch ghcr.io/jhuang6451/calyx:latest-nvidia
 ```
 
-切换完成后，重启计算机即可载入全新的 Calyx 系统：
+After switching, reboot your system to load Calyx:
 ```bash
 sudo reboot
 ```
 
 ---
 
-### 2. 系统日常更新与维护
+### 2. Daily System Updates & Maintenance
 
-Calyx 系统采用声明式更新机制，升级过程在后台完成且不会影响当前运行中的应用：
+Calyx features a declarative update model. Upgrades are performed safely in the background without affecting your active desktop session:
 
 ```bash
-# 检查并更新至最新的 Calyx 镜像版本
+# Check for and upgrade to the latest Calyx image
 sudo bootc upgrade
 
-# 更新完成后重启应用新版本
+# Reboot to apply the new system state
 sudo reboot
 ```
 
 ---
 
-### 3. 版本回滚 (Rollback)
+### 3. System Rollback
 
-若遇到任何兼容性问题，可随时一键安全回滚至升级前的工作状态：
+If you encounter any compatibility issues, you can instantly and safely roll back to your previous working system state:
 
 ```bash
 sudo bootc rollback
@@ -62,6 +64,6 @@ sudo bootc rollback
 
 ---
 
-## 📄 开源许可
+## 📄 License
 
-本项目遵循 MIT 开源许可协议。感谢 [Universal Blue](https://github.com/ublue-os) 与 [Aurora](https://github.com/get-aurora-dev/aurora) 社区提供的优秀上游资源与范式支持。
+Distributed under the [MIT License](./LICENSE). Special thanks to [Universal Blue](https://github.com/ublue-os) and [Aurora](https://github.com/get-aurora-dev/aurora) for providing outstanding upstream resources and design patterns.

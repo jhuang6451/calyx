@@ -12,6 +12,15 @@ tee /usr/lib/bootc/kargs.d/00-nvidia.toml <<EOF
 kargs = ["rd.driver.blacklist=nouveau", "modprobe.blacklist=nouveau", "nvidia-drm.modeset=1", "initcall_blacklist=simpledrm_platform_driver_init"]
 EOF
 
+# 写入 NVIDIA 显卡高性能与 RTD3 动态电源管理 modprobe 参数
+mkdir -p /usr/lib/modprobe.d
+tee /usr/lib/modprobe.d/nvidia-performance.conf <<EOF
+# Enable Page Attribute Table (PAT) & fast VRAM memory allocation
+options nvidia NVreg_UsePageAttributeTable=1 NVreg_InitializeSystemMemoryAllocations=0
+# Enable Dynamic Power Management (RTD3) for laptops / hybrid GPUs
+options nvidia NVreg_DynamicPowerManagement=0x03
+EOF
+
 systemctl enable ublue-nvidia-flatpak-runtime-sync.service
 
 echo "::endgroup::"
