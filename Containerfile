@@ -1,6 +1,6 @@
 # === 基础参数 ===
 ARG FEDORA_MAJOR_VERSION=44
-ARG KERNEL=7.1.0-200.fc44.x86_64
+ARG KERNEL=7.0.12-201.fc44.x86_64
 ARG AKMODS_FLAVOR=main
 ARG BASE_IMAGE_ORG=quay.io/fedora-ostree-desktops
 ARG BASE_IMAGE_NAME=kinoite

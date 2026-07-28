@@ -27,13 +27,13 @@ on:
       kernel_version:
         description: 'Kernel Version'
         required: true
-        default: '7.1.0-200.fc44.x86_64'
+        default: '7.0.12-201.fc44.x86_64'
 
 env:
   REGISTRY: ghcr.io
   IMAGE_NAME: ${{ github.repository_owner }}/calyx
   DEFAULT_FEDORA_VERSION: '44'
-  DEFAULT_KERNEL_VERSION: '7.1.0-200.fc44.x86_64'
+  DEFAULT_KERNEL_VERSION: '7.0.12-201.fc44.x86_64'
 
 jobs:
   build:

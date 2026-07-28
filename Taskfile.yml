@@ -2,7 +2,7 @@ version: '3'
 
 vars:
   FEDORA_VERSION: '44'
-  KERNEL_VERSION: '7.1.0-200.fc44.x86_64'
+  KERNEL_VERSION: '7.0.12-201.fc44.x86_64'
   NVIDIA: 'false'
   IMAGE_NAME: 'calyx'
 
