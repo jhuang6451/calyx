@@ -48,9 +48,9 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - variant: main
-            nvidia_enabled: 'false'
-            tag_suffix: ''
+          # - variant: main
+          #   nvidia_enabled: 'false'
+          #   tag_suffix: ''
           - variant: nvidia
             nvidia_enabled: 'true'
             tag_suffix: '-nvidia'

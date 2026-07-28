@@ -58,7 +58,6 @@ RUN --mount=type=tmpfs,dst=/boot \
     --mount=type=bind,from=ctx,source=/,target=/ctx \
     --mount=type=cache,dst=/var/cache/libdnf5 \
     --mount=type=bind,from=nvidia-provider,src=/rpms,dst=/tmp/rpms/nvidia \
-    --mount=type=bind,from=nvidia-provider,src=/system_files,dst=/ctx/system_files/nvidia \
     --mount=type=secret,id=GITHUB_TOKEN \
     if [ "${NVIDIA_ENABLED}" = "true" ]; then \
         /ctx/scripts/base/03_nvidia_akmods.sh; \
