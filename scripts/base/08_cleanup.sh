@@ -22,8 +22,8 @@ if [ -f /etc/yum.repos.d/fedora-coreos-pool.repo ]; then
 fi
 
 # Revert back to upstream defaults
-dnf config-manager setopt keepcache=0
-dnf versionlock clear
+dnf5 config-manager setopt keepcache=0
+dnf5 versionlock clear
 
 rm -rf /.gitkeep
 

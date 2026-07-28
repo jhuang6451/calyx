@@ -4,7 +4,7 @@ set -eoux pipefail
 echo "::group:: init"
 
 # Speeds up local builds
-dnf config-manager setopt keepcache=1
+dnf5 config-manager setopt keepcache=1
 
 # Copy Base Configs to Image
 # 注意：源路径末尾的 / 非常重要，它确保将 base 目录下的内容合并到根目录，

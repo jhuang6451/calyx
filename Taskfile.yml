@@ -1,8 +1,8 @@
 version: '3'
 
 vars:
-  FEDORA_VERSION: '43'
-  KERNEL_VERSION: '6.19.10-200.fc43.x86_64'
+  FEDORA_VERSION: '44'
+  KERNEL_VERSION: '7.1.0-200.fc44.x86_64'
   NVIDIA: 'false'
   IMAGE_NAME: 'calyx'
 

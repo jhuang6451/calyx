@@ -1,0 +1,129 @@
+name: Build and Push Calyx Bootc Image
+
+on:
+  push:
+    branches:
+      - main
+      - master
+    paths-ignore:
+      - '**.md'
+      - 'LICENSE'
+  pull_request:
+    branches:
+      - main
+      - master
+    paths-ignore:
+      - '**.md'
+      - 'LICENSE'
+  # schedule:
+  #   # 暂时关闭定时构建，待本地测试通过后再启用
+  #   - cron: '0 0 * * 0'
+  workflow_dispatch:
+    inputs:
+      fedora_version:
+        description: 'Fedora Major Version'
+        required: true
+        default: '44'
+      kernel_version:
+        description: 'Kernel Version'
+        required: true
+        default: '7.1.0-200.fc44.x86_64'
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository_owner }}/calyx
+  DEFAULT_FEDORA_VERSION: '44'
+  DEFAULT_KERNEL_VERSION: '7.1.0-200.fc44.x86_64'
+
+jobs:
+  build:
+    name: Build & Push Image (${{ matrix.variant }})
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+      id-token: write # 用于 Cosign OIDC 免密签名
+
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - variant: main
+            nvidia_enabled: 'false'
+            tag_suffix: ''
+          - variant: nvidia
+            nvidia_enabled: 'true'
+            tag_suffix: '-nvidia'
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set build variables
+        id: vars
+        run: |
+          FEDORA_VER="${{ github.event.inputs.fedora_version || env.DEFAULT_FEDORA_VERSION }}"
+          KERNEL_VER="${{ github.event.inputs.kernel_version || env.DEFAULT_KERNEL_VERSION }}"
+          KERNEL_SHORT=$(echo "$KERNEL_VER" | cut -d'-' -f1)
+          
+          echo "fedora_version=$FEDORA_VER" >> $GITHUB_OUTPUT
+          echo "kernel_version=$KERNEL_VER" >> $GITHUB_OUTPUT
+          echo "kernel_short=$KERNEL_SHORT" >> $GITHUB_OUTPUT
+
+      - name: Set up Cosign
+        if: github.event_name != 'pull_request'
+        uses: sigstore/cosign-installer@v3.5.0
+
+      - name: Log in to GitHub Container Registry
+        if: github.event_name != 'pull_request'
+        uses: redhat-actions/podman-login@v1
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Generate image tags
+        id: tags
+        run: |
+          FEDORA_VER="${{ steps.vars.outputs.fedora_version }}"
+          KERNEL_SHORT="${{ steps.vars.outputs.kernel_short }}"
+          SUFFIX="${{ matrix.tag_suffix }}"
+          
+          TAGS=()
+          TAGS+=("${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest${SUFFIX}")
+          TAGS+=("${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${FEDORA_VER}${SUFFIX}")
+          TAGS+=("${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${FEDORA_VER}-${KERNEL_SHORT}${SUFFIX}")
+          
+          echo "tags=${TAGS[*]}" >> $GITHUB_OUTPUT
+
+      - name: Build Image with Buildah
+        id: build-image
+        uses: redhat-actions/buildah-build@v2
+        with:
+          containerfiles: ./Containerfile
+          image: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          tags: ${{ steps.tags.outputs.tags }}
+          build-args: |
+            FEDORA_MAJOR_VERSION=${{ steps.vars.outputs.fedora_version }}
+            KERNEL=${{ steps.vars.outputs.kernel_version }}
+            NVIDIA_ENABLED=${{ matrix.nvidia_enabled }}
+          secrets: |
+            GITHUB_TOKEN=${{ secrets.GITHUB_TOKEN }}
+          oci: true
+
+      - name: Push to GHCR
+        if: github.event_name != 'pull_request'
+        id: push-to-ghcr
+        uses: redhat-actions/push-to-registry@v2
+        with:
+          image: ${{ build-image.outputs.image }}
+          tags: ${{ build-image.outputs.tags }}
+          registry: ${{ env.REGISTRY }}
+
+      - name: Sign image with Cosign
+        if: github.event_name != 'pull_request'
+        run: |
+          for tag in ${{ steps.tags.outputs.tags }}; do
+            echo "Signing $tag..."
+            cosign sign --yes "$tag@${{ steps.push-to-ghcr.outputs.digest }}"
+          done

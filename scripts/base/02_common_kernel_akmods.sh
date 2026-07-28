@@ -4,7 +4,7 @@ set -eoux pipefail
 
 # Remove Existing Kernel
 for pkg in kernel kernel{-core,-modules,-modules-core,-modules-extra,-tools-libs,-tools}; do
-    rpm --erase "${pkg}" --nodeps
+    rpm --erase "${pkg}" --nodeps 2>/dev/null || true
 done
 
 # cleanup leftovers that are not covered by kernel-* packages for some reason

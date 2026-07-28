@@ -110,6 +110,7 @@ FEDORA_PACKAGES=(
     grub2-tools-extra        # 引导管理增强
 
     # --- [系统实用程序 / System Utilities] ---
+    unzip                    # 压缩包解压工具
     ksystemlog               # KDE 日志查看器
     setools-console          # SELinux 调试工具
     tcpdump                  # 抓包工具
