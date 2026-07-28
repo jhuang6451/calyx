@@ -107,6 +107,7 @@ FEDORA_PACKAGES=(
 
     # --- [系统实用程序 / System Utilities] ---
     unzip                    # 压缩包解压工具
+    xcb-util-cursor          # Qt6 XCB platform cursor dependency
     ksystemlog               # KDE 日志查看器
     setools-console          # SELinux 调试工具
     tcpdump                  # 抓包工具
