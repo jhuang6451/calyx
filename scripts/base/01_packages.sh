@@ -194,6 +194,10 @@ dnf5 -y install --setopt=install_weak_deps=False --enablerepo=code code
 
 # Google Chrome
 echo "Installing Google Chrome from Google repo..."
+if [[ -L /opt ]]; then
+    rm -f /opt
+    mkdir -p /opt
+fi
 rpm --import https://dl.google.com/linux/linux_signing_key.pub
 cat <<EOF > /etc/yum.repos.d/google-chrome.repo
 [google-chrome]

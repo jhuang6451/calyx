@@ -49,6 +49,10 @@ find /run -mindepth 1 \
 rm -rf /tmp/*
 mkdir -p /var/tmp
 
-rm -rf /opt && ln -s /var/opt /opt # /opt 是指向向 /var/opt 的软链接，保持兼容性
+# Convert /opt to symlink only if it is empty; preserve if packages installed into /opt
+if [[ -d /opt && -z "$(ls -A /opt 2>/dev/null)" ]]; then
+    rm -rf /opt
+    ln -s /var/opt /opt
+fi
 
 echo "::endgroup::"
