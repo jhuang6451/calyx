@@ -107,7 +107,7 @@ jobs:
             FEDORA_MAJOR_VERSION=${{ steps.vars.outputs.fedora_version }}
             KERNEL=${{ steps.vars.outputs.kernel_version }}
             NVIDIA_ENABLED=${{ matrix.nvidia_enabled }}
-          secrets: |
+          secret-envs: |
             GITHUB_TOKEN=${{ secrets.GITHUB_TOKEN }}
           oci: true
 
