@@ -1,46 +1,67 @@
-# Calyx Custom Bootc Image
+# Calyx
 
-Calyx 是基于 Fedora Kinoite (KDE Ostree) 和 Universal Blue / Aurora 构建的自定义 `bootc` 操作系统镜像项目。
+**Calyx** 是一个基于云原生容器技术打造的**个人定制化不可变操作系统镜像（Immutable OS Image）**。
 
-## 🌟 特性
+项目借鉴并参考了 [Aurora](https://github.com/get-aurora-dev/aurora) 的构建哲学与工程范式，以上游 [Universal Blue](https://github.com/ublue-os) 基础设施以及 Fedora Kinoite (KDE Plasma) 为核心底座，为个人桌面环境提供高稳定、开箱即用且声明式维护的系统体验。
 
-- **Bootc 现代原生镜像架构**: 支持使用 `bootc switch` / `bootc upgrade` 进行操作系统镜像更新与无缝切换。
-- **动态 NVIDIA 驱动支持**: 支持编译标准版 (`main`) 及 NVIDIA 独显驱动版 (`nvidia`)。
-- **现代化软件与多媒体集成**: 预装 `dnf5`, `fastfetch`, `btop`, `restic`, `sunshine`, `tailscale` 等工具，替换 Negativo17 完整的 Mesa / VAAPI 硬件加速驱动。
-- **自动化 CI/CD 工作流**: 支持 GitHub Actions 自动化矩阵构建、推送至 GHCR 以及 Cosign 镜像签名认证。
+---
 
-## 🛠️ 本地构建与调试
+## ✨ 核心特性
 
-使用 `podman` 或 `Taskfile` 在本地构建镜像：
+- **不可变架构 (Bootc Native)**：基于 `bootc` (Container-as-a-system) 理念，将整个操作系统打包为 OCI 容器镜像。系统核心只读，原生防篡改与防系统损坏。
+- **现代化桌面与多媒体**：集成 KDE Plasma 6 桌面环境、完整版音视频硬件编解码支持（VA-API / QSV / NVENC）、Google Chrome 浏览器及一系列选定的开发与效率工具。
+- **开箱即用与极简优化**：剔除冗余的内置软件与后台服务，针对桌面响应速度、硬件功耗读取及输入法体验进行了针对性调优。
+- **多硬件版本支持**：提供 Intel/AMD 标准通用版本以及专为 NVIDIA 独立显卡优化的驱动版本。
 
+---
+
+## 🚀 镜像使用指南
+
+在任何支持 `bootc` 的操作系统（如 Fedora Silverblue / Kinoite / Universal Blue / Bazzite）中，均可通过标准 `bootc` 命令切换与管理 Calyx 系统镜像。
+
+### 1. 切换至 Calyx 系统镜像
+
+#### 标准通用版 (Intel / AMD 核显及独显)
 ```bash
-# 1. 设置脚本执行权限
-chmod +x scripts/base/*.sh utils/*
-
-# 2. 构建标准版镜像 (Fedora 44 / Linux 7.1)
-podman build -t calyx:latest -f Containerfile .
-
-# 3. 构建 NVIDIA 驱动版镜像
-podman build --build-arg NVIDIA_ENABLED=true -t calyx:latest-nvidia -f Containerfile .
+sudo bootc switch ghcr.io/jhuang6451/calyx:latest
 ```
 
-## 🚀 GitHub Actions CI/CD 工作流
+#### NVIDIA 显卡驱动版
+```bash
+sudo bootc switch ghcr.io/jhuang6451/calyx:latest-nvidia
+```
 
-项目已配置 GitHub Actions 工作流：[.github/workflows/build-and-push.yml](.github/workflows/build-and-push.yml)。
+切换完成后，重启计算机即可载入全新的 Calyx 系统：
+```bash
+sudo reboot
+```
 
-### 功能包含：
-- **触发条件**:
-  - 提交至 `main` / `master` 分支自动构建。
-  - Pull Request 自动触发验证构建（不发布）。
-  - 每周日 00:00 UTC 自动定时重构，同步 upstream 基础镜像与安全更新。
-  - 支持在 GitHub Actions 页面进行 **Workflow Dispatch** 手动指定 Fedora 及 Kernel 版本构建。
-- **镜像输出**: 镜像自动打包并推送到 GitHub Container Registry (`ghcr.io`)。
-  - `ghcr.io/<owner>/calyx:latest`
-  - `ghcr.io/<owner>/calyx:latest-nvidia`
-  - `ghcr.io/<owner>/calyx:44-7.1.0`
-- **Cosign 签名**: 使用 Keyless Cosign (GitHub OIDC) 为生成的 OCI 镜像自动签名。
+---
 
-### ⚙️ GitHub 仓库必要设置：
-1. 访问 GitHub 仓库的 **Settings** -> **Actions** -> **General**。
-2. 在 **Workflow permissions** 中选择 **Read and write permissions**。
-3. 勾选 **Allow GitHub Actions to create and approve pull requests**。
+### 2. 系统日常更新与维护
+
+Calyx 系统采用声明式更新机制，升级过程在后台完成且不会影响当前运行中的应用：
+
+```bash
+# 检查并更新至最新的 Calyx 镜像版本
+sudo bootc upgrade
+
+# 更新完成后重启应用新版本
+sudo reboot
+```
+
+---
+
+### 3. 版本回滚 (Rollback)
+
+若遇到任何兼容性问题，可随时一键安全回滚至升级前的工作状态：
+
+```bash
+sudo bootc rollback
+```
+
+---
+
+## 📄 开源许可
+
+本项目遵循 MIT 开源许可协议。感谢 [Universal Blue](https://github.com/ublue-os) 与 [Aurora](https://github.com/get-aurora-dev/aurora) 社区提供的优秀上游资源与范式支持。

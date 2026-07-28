@@ -51,10 +51,9 @@ jobs:
           - variant: main
             nvidia_enabled: 'false'
             tag_suffix: ''
-          # 暂不构建 nvidia 版本以节省 GitHub Actions 资源，测试成功后再开启
-          # - variant: nvidia
-          #   nvidia_enabled: 'true'
-          #   tag_suffix: '-nvidia'
+          - variant: nvidia
+            nvidia_enabled: 'true'
+            tag_suffix: '-nvidia'
 
     steps:
       - name: Checkout repository

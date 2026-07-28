@@ -27,6 +27,9 @@ dnf5 versionlock clear
 
 rm -rf /.gitkeep
 
+# Ensure Firefox desktop entries are completely removed
+rm -f /usr/share/applications/firefox*.desktop
+
 # Ensure plugdev group has sysusers.d entry for bootc lint
 mkdir -p /usr/lib/sysusers.d
 echo "g plugdev - -" > /usr/lib/sysusers.d/plugdev.conf

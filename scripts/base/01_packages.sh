@@ -24,6 +24,9 @@ dnf5 config-manager setopt fedora-multimedia.priority=90
 # ==========================================================
 #  硬件加速与图形驱动替换
 # ==========================================================
+# 遵循 Aurora 逻辑：在 distro-sync 前锁定 qt6 和 plasma-desktop，防止第三方源引发局部升级冲突
+dnf5 versionlock add "qt6-*" plasma-desktop
+
 OVERRIDES=(
     "intel-gmmlib"
     "intel-mediasdk"
@@ -41,6 +44,7 @@ OVERRIDES=(
 )
 
 dnf5 distro-sync --skip-unavailable -y --repo='fedora-multimedia' "${OVERRIDES[@]}"
+dnf5 versionlock add "${OVERRIDES[@]}"
 
 # 多媒体与闭源驱动补丁包
 NEGATIVO_PACKAGES=(
@@ -57,7 +61,7 @@ echo "Installing ${#NEGATIVO_PACKAGES[@]} from Negativo..."
 dnf5 -y install --setopt=install_weak_deps=False "${NEGATIVO_PACKAGES[@]}"
 
 # ==========================================================
-#  官方源软件包安装
+#  官方源软件包安装 (整合用户 rpm_list.txt)
 # ==========================================================
 FEDORA_PACKAGES=(
     # --- [网络身份认证与文件共享 / Network Authentication & File Sharing] ---
@@ -72,6 +76,7 @@ FEDORA_PACKAGES=(
     apr                      # Apache 运行库，底层系统依赖
     apr-util
     autofs                   # 自动挂载远程共享
+    NetworkManager-tui       # NM 命令行及终端 UI 界面 (nmtui)
 
     # --- [数据备份与安全 / Data Backup & Security] ---
     restic                   # 现代化的加密备份工具
@@ -81,21 +86,33 @@ FEDORA_PACKAGES=(
     podman
     distrobox
     flatpak-spawn            # 允许在 Flatpak 沙盒内调用宿主机命令
+    qemu-kvm                 # 虚拟化组件 (@virtualization)
+    libvirt
+    virt-manager
 
-    # --- [终端工具 / Terminal Tools] ---
+    # --- [终端与开发工具 / Terminal & Dev Tools] ---
+    git
+    gh                       # GitHub CLI
     zsh                      # 强大的 Shell 环境
     tmux                     # 终端复用器
     fastfetch                # 系统信息展示
     gum                      # 增强脚本交互的 UI 工具
-    btop                     # 资源监视器，htop 的现代替代品
+    btop                     # 资源监视器
+    cmatrix                  # 终端黑客帝国特效
+    stow                     # Dotfiles 管理工具
+    helix                    # 现代文本编辑器 (hx)
+    cmake                    # 编译构建工具
+    gcc
+    gcc-c++
+    golang                   # Go 语言环境
+    nodejs                   # Node.js 环境
+    python3-pip              # Python 包管理器
 
-    # --- [硬件管理与底层工具 / Hardware Tools] ---
+    # --- [硬件管理与底层调试 / Hardware & Low-level Tools] ---
     alsa-firmware            # 声卡固件
     evtest                   # 输入设备调试
     igt-gpu-tools            # GPU 性能分析
     input-remapper           # 强大的按键映射工具
-    # iwd                      # 现代 Wi-Fi 守护进程 #TODO
-    # libratbag-ratbagd        # 游戏鼠标配置 (Piper 驱动)
     lm_sensors               # 温度传感器监控
     lshw                     # 硬件信息列举
     nvtop                    # GPU 资源占用实时监控
@@ -104,6 +121,16 @@ FEDORA_PACKAGES=(
     powerstat
     squashfs-tools           # 文件系统压缩工具
     grub2-tools-extra        # 引导管理增强
+    hwloc-libs               # 硬件拓扑分析库
+    numactl-libs             # NUMA 内存管理库
+    stress-ng                # 压力测试工具
+    pciutils-devel           # PCI 设备开发库
+    android-tools            # Android ADB 与 Fastboot 工具
+
+    # --- [图形与游戏工具 / Graphics & Gaming] ---
+    gamescope                # Valve 窗口合成器
+    steam                    # Steam 游戏平台
+    gparted                  # 磁盘分区管理工具
 
     # --- [系统实用程序 / System Utilities] ---
     unzip                    # 压缩包解压工具
@@ -113,12 +140,12 @@ FEDORA_PACKAGES=(
     tcpdump                  # 抓包工具
     traceroute               # 路由追踪
     symlinks                 # 软链接管理
-    gcc                      # 基础编译器，部分底层操作需要
     git-credential-libsecret # Git 凭据管理器
     kate                     # KDE 文本编辑器
     kcm-fcitx5               # KDE 输入法设置界面
     ksshaskpass              # SSH 密码询问器
     libxcrypt-compat         # 兼容旧版本加密算法
+    fcitx5
     fcitx5-chinese-addons
     fcitx5-configtool
     fcitx5-gtk
@@ -140,12 +167,8 @@ esac
 echo "Installing ${#FEDORA_PACKAGES[@]} packages from Fedora repos..."
 dnf5 -y install --setopt=install_weak_deps=False "${FEDORA_PACKAGES[@]}"
 
-# Prevent partial upgrading after packages are fully installed
-# https://github.com/ublue-os/aurora/issues/1227
-dnf5 versionlock add "qt6-*" plasma-desktop "${OVERRIDES[@]}"
-
 # ==========================================================
-#  三方源软件包安装
+#  三方源软件包安装 (Google Chrome, Tailscale, VSCode)
 # ==========================================================
 # Tailscale
 echo "Installing tailscale from official repo..."
@@ -156,7 +179,6 @@ dnf5 -y install --setopt=install_weak_deps=False --enablerepo='tailscale-stable'
 # VSCode
 echo "Installing Visual Studio Code from Microsoft repo..."
 rpm --import https://packages.microsoft.com/keys/microsoft.asc
-
 cat <<EOF > /etc/yum.repos.d/vscode.repo
 [code]
 name=Visual Studio Code
@@ -167,8 +189,20 @@ type=rpm-md
 gpgcheck=1
 gpgkey=https://packages.microsoft.com/keys/microsoft.asc
 EOF
-
 dnf5 -y install --setopt=install_weak_deps=False --enablerepo=code code
+
+# Google Chrome
+echo "Installing Google Chrome from Google repo..."
+rpm --import https://dl.google.com/linux/linux_signing_key.pub
+cat <<EOF > /etc/yum.repos.d/google-chrome.repo
+[google-chrome]
+name=google-chrome
+baseurl=http://dl.google.com/linux/chrome/rpm/stable/\$basearch
+enabled=0
+gpgcheck=1
+gpgkey=https://dl.google.com/linux/linux_signing_key.pub
+EOF
+dnf5 -y install --setopt=install_weak_deps=False --enablerepo=google-chrome google-chrome-stable
 
 # ==========================================================
 #  Copr 源软件包安装
@@ -181,9 +215,8 @@ copr_install_isolated "lizardbyte/beta" \
     "sunshine"
 
 # ==========================================================
-#  软件包排除
+#  软件包排除 (整合 rpm_list.txt 中的精简项)
 # ==========================================================
-# Packages to exclude
 EXCLUDED_PACKAGES=(
     akonadi-server             # 移除臃肿的 KDE PIM 服务以节省 CPU 和内存
     akonadi-server-mysql
@@ -194,10 +227,37 @@ EXCLUDED_PACKAGES=(
     firefox-langpacks
     firewall-config            # 优先使用系统设置自带的防火墙配置
     kcharselect
-    khelpcenter
+    khelpcenter                # 移除 KDE 帮助中心
+    plasma-discover            # 移除 Discover 软件中心
     plasma-discover-rpm-ostree # 禁用 Discover 修改系统 RPM 包的权限
     plasma-welcome-fedora
     podman-docker              # 移除 Docker 别名以避免脚本冲突
+    # --- 来自 rpm_list.txt 的精简包 ---
+    plasma-nm-pptp             # 移除无用的 VPN 协议插件
+    plasma-nm-sstp
+    plasma-nm-openconnect
+    plasma-nm-vpnc
+    plasma-nm-l2tp
+    abrt                       # 移除 ABRT 崩溃报告服务系列
+    abrt-addon-ccpp
+    abrt-addon-kerneloops
+    abrt-addon-pstoreoops
+    abrt-addon-vmcore
+    abrt-addon-xorg
+    abrt-cli
+    abrt-dbus
+    abrt-desktop
+    abrt-gui
+    abrt-gui-libs
+    abrt-libs
+    abrt-plugin-bodhi
+    abrt-tui
+    kdebugsettings             # 移除调试设置工具
+    plasma-desktop-doc         # 移除桌面文档
+    kpat                       # 移除 KDE 预装小游戏
+    kmines
+    kmahjongg
+    kde-partitionmanager       # 移除分区工具 (已选用 GParted)
 )
 
 # Version-specific package exclusions
