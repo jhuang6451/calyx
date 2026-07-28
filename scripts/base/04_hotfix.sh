@@ -24,7 +24,7 @@ rm -f /usr/bin/chsh /usr/bin/lchsh
 ln -s "/usr/share/fonts/google-noto-sans-cjk-fonts" "/usr/share/fonts/noto-cjk"
 
 # KDE Discover: 屏蔽让用户感到困惑的“系统更新”提示（在 bootc 系统上，升级应通过 ujust update 等专用工具完成）。
-rm /etc/xdg/autostart/org.kde.discover.notifier.desktop
+rm -f /etc/xdg/autostart/org.kde.discover.notifier.desktop
 
 # Make Samba usershares work OOTB
 mkdir -p /var/lib/samba/usershares
