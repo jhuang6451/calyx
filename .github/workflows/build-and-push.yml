@@ -109,6 +109,9 @@ jobs:
             NVIDIA_ENABLED=${{ matrix.nvidia_enabled }}
           secret-envs: |
             GITHUB_TOKEN=${{ secrets.GITHUB_TOKEN }}
+          extra-args: |
+            --retry=5
+            --retry-delay=5s
           oci: true
 
       - name: Push to GHCR
