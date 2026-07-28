@@ -24,9 +24,6 @@ dnf5 config-manager setopt fedora-multimedia.priority=90
 # ==========================================================
 #  硬件加速与图形驱动替换
 # ==========================================================
-# may break SDDM/KWin when upgraded
-dnf5 versionlock add "qt6-*"
-
 OVERRIDES=(
     "intel-gmmlib"
     "intel-mediasdk"
@@ -44,7 +41,6 @@ OVERRIDES=(
 )
 
 dnf5 distro-sync --skip-unavailable -y --repo='fedora-multimedia' "${OVERRIDES[@]}"
-dnf5 versionlock add "${OVERRIDES[@]}"
 
 # 多媒体与闭源驱动补丁包
 NEGATIVO_PACKAGES=(
@@ -140,12 +136,12 @@ case "$FEDORA_MAJOR_VERSION" in
         ;;
 esac
 
-# Prevent partial upgrading
-# https://github.com/ublue-os/aurora/issues/1227
-dnf5 versionlock add plasma-desktop
-
 echo "Installing ${#FEDORA_PACKAGES[@]} packages from Fedora repos..."
 dnf5 -y install --setopt=install_weak_deps=False "${FEDORA_PACKAGES[@]}"
+
+# Prevent partial upgrading after packages are fully installed
+# https://github.com/ublue-os/aurora/issues/1227
+dnf5 versionlock add "qt6-*" plasma-desktop "${OVERRIDES[@]}"
 
 # ==========================================================
 #  三方源软件包安装
