@@ -172,6 +172,7 @@ dnf5 -y install --setopt=install_weak_deps=False "${FEDORA_PACKAGES[@]}"
 # ==========================================================
 # Tailscale
 echo "Installing tailscale from official repo..."
+rpm --import https://pkgs.tailscale.com/stable/fedora/repo.gpg
 dnf5 config-manager addrepo --from-repofile=https://pkgs.tailscale.com/stable/fedora/tailscale.repo
 dnf5 config-manager setopt tailscale-stable.enabled=0
 dnf5 -y install --setopt=install_weak_deps=False --enablerepo='tailscale-stable' tailscale
