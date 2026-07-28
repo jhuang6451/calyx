@@ -27,7 +27,22 @@ dnf5 versionlock clear
 
 rm -rf /.gitkeep
 
+# Ensure plugdev group has sysusers.d entry for bootc lint
+mkdir -p /usr/lib/sysusers.d
+echo "g plugdev - -" > /usr/lib/sysusers.d/plugdev.conf
+
 find /var/* -maxdepth 0 -type d \! -name cache -exec rm -fr {} \;
+
+# Clean /run directory for bootc lint (nonempty-run-tmp)
+find /run -mindepth 1 \
+  ! -path '/run/systemd' \
+  ! -path '/run/systemd/resolve' \
+  ! -path '/run/systemd/resolve/stub-resolv.conf' \
+  ! -path '/run/secrets' \
+  ! -path '/run/secrets/*' \
+  ! -path '/run/.containerenv' \
+  -delete 2>/dev/null || true
+
 rm -rf /tmp/*
 mkdir -p /var/tmp
 
