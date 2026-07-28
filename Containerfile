@@ -14,7 +14,7 @@ FROM ghcr.io/ublue-os/akmods:${AKMODS_FLAVOR}-${FEDORA_MAJOR_VERSION}-${KERNEL} 
 
 # NVIDIA 分支逻辑：改为 alpine 极简镜像 (约 5MB)，兼顾性能与 bind mount 路径安全
 FROM alpine:latest AS nvidia-false
-RUN mkdir -p /rpms /system_files
+RUN mkdir -p /rpms
 
 FROM ghcr.io/ublue-os/akmods-nvidia-open:${AKMODS_FLAVOR}-${FEDORA_MAJOR_VERSION}-${KERNEL} AS nvidia-true
 
