@@ -20,13 +20,16 @@ KERNEL_VER=$(rpm -q --queryformat '%{VERSION}-%{RELEASE}' kernel-core | head -n1
 echo "Installed kernel-core version: ${KERNEL_VER}"
 
 # 3. 安装 akmod-nvidia、CUDA 支持以及对应版本的 kernel-devel
-# 使用 tsflags=nodocs,nocaps,nocontexts 规避无特权容器环境下的 Capabilities/SELinux 脚本报错
+# 使用 tsflags=nodocs,nocaps,nocontexts,noscripts 绕过无特权容器环境下的 RPM 脚本执行失败问题
 dnf5 -y install \
     --setopt=install_weak_deps=False \
-    --setopt=tsflags=nodocs,nocaps,nocontexts \
+    --setopt=tsflags=nodocs,nocaps,nocontexts,noscripts \
     akmod-nvidia \
     xorg-x11-drv-nvidia-cuda \
     "kernel-devel-${KERNEL_VER}"
+
+# 刷新共享库缓存
+ldconfig
 
 # 4. 在构建阶段为当前内核编译 NVIDIA 模块
 akmods --force
