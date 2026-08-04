@@ -24,16 +24,11 @@ on:
         description: 'Fedora Major Version'
         required: true
         default: '44'
-      kernel_version:
-        description: 'Kernel Version'
-        required: true
-        default: '7.0.12-201.fc44.x86_64'
 
 env:
   REGISTRY: ghcr.io
   IMAGE_NAME: ${{ github.repository_owner }}/calyx
   DEFAULT_FEDORA_VERSION: '44'
-  DEFAULT_KERNEL_VERSION: '7.0.12-201.fc44.x86_64'
 
 jobs:
   build:
@@ -63,12 +58,7 @@ jobs:
         id: vars
         run: |
           FEDORA_VER="${{ github.event.inputs.fedora_version || env.DEFAULT_FEDORA_VERSION }}"
-          KERNEL_VER="${{ github.event.inputs.kernel_version || env.DEFAULT_KERNEL_VERSION }}"
-          KERNEL_SHORT=$(echo "$KERNEL_VER" | cut -d'-' -f1)
-          
           echo "fedora_version=$FEDORA_VER" >> $GITHUB_OUTPUT
-          echo "kernel_version=$KERNEL_VER" >> $GITHUB_OUTPUT
-          echo "kernel_short=$KERNEL_SHORT" >> $GITHUB_OUTPUT
 
       - name: Set up Cosign
         if: github.event_name != 'pull_request'
@@ -76,7 +66,7 @@ jobs:
 
       - name: Log in to GitHub Container Registry
         if: github.event_name != 'pull_request'
-        uses: redhat-actions/podman-login@v1
+        uses: redhat-actions/push-to-registry@v2
         with:
           registry: ${{ env.REGISTRY }}
           username: ${{ github.actor }}
@@ -86,13 +76,11 @@ jobs:
         id: tags
         run: |
           FEDORA_VER="${{ steps.vars.outputs.fedora_version }}"
-          KERNEL_SHORT="${{ steps.vars.outputs.kernel_short }}"
           SUFFIX="${{ matrix.tag_suffix }}"
           
           TAGS=()
           TAGS+=("${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest${SUFFIX}")
           TAGS+=("${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${FEDORA_VER}${SUFFIX}")
-          TAGS+=("${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${FEDORA_VER}-${KERNEL_SHORT}${SUFFIX}")
           
           echo "tags=${TAGS[*]}" >> $GITHUB_OUTPUT
 
@@ -105,7 +93,6 @@ jobs:
           tags: ${{ steps.tags.outputs.tags }}
           build-args: |
             FEDORA_MAJOR_VERSION=${{ steps.vars.outputs.fedora_version }}
-            KERNEL=${{ steps.vars.outputs.kernel_version }}
             NVIDIA_ENABLED=${{ matrix.nvidia_enabled }}
           secret-envs: |
             GITHUB_TOKEN=${{ secrets.GITHUB_TOKEN }}

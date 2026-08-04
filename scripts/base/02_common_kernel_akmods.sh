@@ -2,34 +2,15 @@
 echo "::group:: ===$(basename "$0")==="
 set -eoux pipefail
 
-# Remove Existing Kernel
-for pkg in kernel kernel{-core,-modules,-modules-core,-modules-extra,-tools-libs,-tools}; do
-    rpm --erase "${pkg}" --nodeps 2>/dev/null || true
-done
+# 跳过对官方内核的修改，直接使用 Fedora 官方最新内核
+echo "Using Fedora official kernel, skipping kernel replacement."
 
-# cleanup leftovers that are not covered by kernel-* packages for some reason
-rm -rf /usr/lib/modules
+# 安装 RPM Fusion Free 仓库（用于获取 akmod-v4l2loopback 等硬件扩展模块）
+if ! rpm -q rpmfusion-free-release &>/dev/null; then
+    dnf5 -y install https://mirrors.rpmfusion.org/free/fedora/rpmfusion-free-release-$(rpm -E %fedora).noarch.rpm || true
+fi
 
-# Install Kernel
-export KERNEL_INSTALL_SKIP_PREGEN_INITRD=yes
-dnf5 -y install \
-    /tmp/kernel-rpms/kernel-[0-9]*.rpm \
-    /tmp/kernel-rpms/kernel-core-*.rpm \
-    /tmp/kernel-rpms/kernel-modules-*.rpm
-
-dnf5 -y install --setopt=install_weak_deps=False \
-    /tmp/kernel-rpms/kernel-devel-*.rpm
-
-dnf5 versionlock add kernel kernel-devel kernel-devel-matched kernel-core kernel-modules kernel-modules-core kernel-modules-extra
-
-dnf5 -y install --setopt=install_weak_deps=False \
-    /tmp/rpms/{common,kmods}/*xone*.rpm /tmp/rpms/{common,kmods}/*openrazer*.rpm || true
-
-dnf5 -y install --setopt=install_weak_deps=False \
-    /tmp/rpms/{kmods,common}/*v4l2loopback*.rpm || true
-
-mkdir -p /etc/pki/akmods/certs
-ghcurl "https://github.com/ublue-os/akmods/raw/refs/heads/main/certs/public_key.der" --retry 3 -Lo /etc/pki/akmods/certs/akmods-ublue.der
-
+# 安装 akmod-v4l2loopback 扩展模块
+dnf5 -y install --setopt=install_weak_deps=False akmod-v4l2loopback || true
 
 echo "::endgroup::"

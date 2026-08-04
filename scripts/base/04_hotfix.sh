@@ -13,6 +13,16 @@ chmod +x /usr/lib/systemd/system-generators/coreos-sulogin-force-generator
 # 若想更改默认 Shell，应通过修改 /etc/default/useradd 中的 SHELL 变量来实现。
 rm -f /usr/bin/chsh /usr/bin/lchsh
 
+# 设置所有新创建用户的默认 Shell 为 /bin/zsh，并将 root 用户 shell 改为 /bin/zsh
+mkdir -p /etc/default
+if [ -f /etc/default/useradd ]; then
+    sed -i 's|^SHELL=.*|SHELL=/bin/zsh|' /etc/default/useradd || echo "SHELL=/bin/zsh" >> /etc/default/useradd
+else
+    echo "SHELL=/bin/zsh" > /etc/default/useradd
+fi
+sed -i 's|^root:\([^:]*\):\([^:]*\):\([^:]*\):\([^:]*\):\([^:]*\):.*|root:\1:\2:\3:\4:\5:/bin/zsh|' /etc/passwd
+
+
 # secure_path 是 sudo 命令运行时的信任路径。此处追加路径，方便用户在 sudo 下直接调用其工具。
 # 采用 sed 修改主配置是为了利用 bootc 的三方合并机制，使这里添加的路径能与官方未来的更新融合。
 # 若用户日后在 sudoers.d 中定义了新的配置，系统将以用户的“最终解释权”为准。
