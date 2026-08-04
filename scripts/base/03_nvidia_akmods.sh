@@ -12,15 +12,16 @@ fi
 # 开启 fedora-repos-archive 仓库，确保能够检索到与基础镜像内核精确匹配的 kernel-devel
 dnf5 config-manager setopt fedora-repos-archive.enabled=1 || true
 
+# 清理 versionlock，解除对 32 位 multilib (i686) 依赖库的排除限制，保留完整版驱动
+dnf5 versionlock clear || true
+
 # 2. 获取当前系统已安装内核的精确版本
 KERNEL_VER=$(rpm -q --queryformat '%{VERSION}-%{RELEASE}' kernel-core | head -n1)
 echo "Installed kernel-core version: ${KERNEL_VER}"
 
 # 3. 安装 akmod-nvidia、CUDA 支持以及对应版本的 kernel-devel
-# 暂禁 fedora-multimedia 以避免包依赖优先级冲突
 dnf5 -y install \
     --setopt=install_weak_deps=False \
-    --disablerepo=fedora-multimedia \
     akmod-nvidia \
     xorg-x11-drv-nvidia-cuda \
     "kernel-devel-${KERNEL_VER}"
