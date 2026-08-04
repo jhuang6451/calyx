@@ -20,8 +20,10 @@ KERNEL_VER=$(rpm -q --queryformat '%{VERSION}-%{RELEASE}' kernel-core | head -n1
 echo "Installed kernel-core version: ${KERNEL_VER}"
 
 # 3. 安装 akmod-nvidia、CUDA 支持以及对应版本的 kernel-devel
+# 使用 tsflags=nodocs,nocaps,nocontexts 规避无特权容器环境下的 Capabilities/SELinux 脚本报错
 dnf5 -y install \
     --setopt=install_weak_deps=False \
+    --setopt=tsflags=nodocs,nocaps,nocontexts \
     akmod-nvidia \
     xorg-x11-drv-nvidia-cuda \
     "kernel-devel-${KERNEL_VER}"
