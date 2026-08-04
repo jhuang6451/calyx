@@ -12,8 +12,9 @@ dnf5 config-manager setopt keepcache=1
 rsync -rvKl /ctx/source/configs/base/ /
 
 # Install Utils to Tmp
-# 注意：utils 目录在 ctx 镜像的根路径下，而不是在 source/utils 下。
-mkdir -p /tmp/bin/
+mkdir -p /tmp/bin/ /var/tmp /var/log/akmods /var/cache/akmods
+chmod 1777 /tmp /var/tmp
+chmod 777 /var/log/akmods /var/cache/akmods
 install -Dm0755 /ctx/utils/ghcurl /tmp/bin/ghcurl
 install -Dm0755 /ctx/utils/copr-helpers.sh /tmp/bin/copr-helpers.sh
 

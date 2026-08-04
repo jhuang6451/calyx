@@ -18,8 +18,12 @@ KERNEL_ARCH=$(rpm -q --queryformat '%{ARCH}' kernel-core | head -n1)
 FULL_KERNEL_VER="${KERNEL_VERSION}.${KERNEL_ARCH}"
 echo "Target kernel version: ${FULL_KERNEL_VER}"
 
-# 3. 预先创建 /var 关键目录结构
-mkdir -p /var/lib/alternatives /var/log /var/tmp /var/cache /var/lib/rpm
+# 3. 预先创建 /var 与 /tmp 关键目录结构并赋予 1777 权限
+#    Containerfile 中 /var 为 tmpfs 挂载，且 akmods 会降权至 akmodsbuild 普通用户进行编译。
+#    如果 /var/tmp 和 /tmp 没有 1777 (sticky bit) 权限，rpmbuild 会抛出 Permission denied 致命错误。
+mkdir -p /var/lib/alternatives /var/log/akmods /var/cache/akmods /var/tmp /tmp /var/lib/rpm
+chmod 1777 /tmp /var/tmp
+chmod 777 /var/log/akmods /var/cache/akmods
 
 # 4. 安装 akmod-nvidia, CUDA 支持以及与当前内核完全匹配的 kernel-devel
 #    使用 tsflags=noscripts 避免 akmod-nvidia 的 %post 脚本因 root 用户运行抛出 ERROR: Not to be used as root 导致事务中断
