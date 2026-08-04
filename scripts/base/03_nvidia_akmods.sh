@@ -9,55 +9,55 @@ if ! rpm -q rpmfusion-nonfree-release &>/dev/null; then
     dnf5 -y install https://mirrors.rpmfusion.org/nonfree/fedora/rpmfusion-nonfree-release-$(rpm -E %fedora).noarch.rpm
 fi
 
-# 2. 获取当前系统已安装内核的精确版本
-KERNEL_VER=$(rpm -q --queryformat '%{VERSION}-%{RELEASE}.%{ARCH}' kernel-core | head -n1)
-echo "Installed kernel version: ${KERNEL_VER}"
+# 开启 fedora-repos-archive 仓库，确保能够检索到与基础镜像内核精确匹配的 kernel-devel
+dnf5 config-manager setopt fedora-repos-archive.enabled=1 || true
 
-# 3. 预建容器环境所需的目录结构
-#    Containerfile 中 /var 被挂载为 tmpfs，需预先创建 RPM scriptlet 可能写入的子目录
+# 2. 获取当前系统已安装内核的精确版本信息
+KERNEL_VERSION=$(rpm -q --queryformat '%{VERSION}-%{RELEASE}' kernel-core | head -n1)
+KERNEL_ARCH=$(rpm -q --queryformat '%{ARCH}' kernel-core | head -n1)
+FULL_KERNEL_VER="${KERNEL_VERSION}.${KERNEL_ARCH}"
+echo "Target kernel version: ${FULL_KERNEL_VER}"
+
+# 3. 预先创建 /var 关键目录结构
 mkdir -p /var/lib/alternatives /var/log /var/tmp /var/cache /var/lib/rpm
 
-# 4. 下载 NVIDIA 驱动全套 RPM（包含所有依赖项）到临时目录
-#    使用 dnf5 download --resolve 自动解析并下载完整依赖树
-NVIDIA_RPM_DIR=/tmp/nvidia-rpms
-mkdir -p "${NVIDIA_RPM_DIR}"
-
-dnf5 download --resolve --alldeps --destdir="${NVIDIA_RPM_DIR}" \
+# 4. 安装 akmod-nvidia, CUDA 支持以及与当前内核完全匹配的 kernel-devel
+dnf5 -y install \
+    --setopt=install_weak_deps=False \
     akmod-nvidia \
-    xorg-x11-drv-nvidia-cuda
+    xorg-x11-drv-nvidia-cuda \
+    "kernel-devel-${KERNEL_VERSION}"
 
-# 排除已安装的包（如 kernel-devel，已在 02_common_kernel_akmods.sh 阶段安装）
-# rpm --noscripts 跳过容器内无法执行的 RPM scriptlet（setcap, audit log, dbus 等）
-# --nodeps 跳过依赖检查，因为我们已通过 dnf5 download --resolve 确认了完整依赖
-# --force 覆盖已存在的文件，避免与已安装包冲突
-rpm -Uvh --force --nodeps --noscripts "${NVIDIA_RPM_DIR}"/*.rpm || true
+# 5. 在构建阶段为精确匹配的内核版本编译 NVIDIA 驱动模块
+echo "Building NVIDIA kernel modules for ${FULL_KERNEL_VER}..."
+akmods --force --kernels "${FULL_KERNEL_VER}"
 
-# 清理下载的 RPM 包
-rm -rf "${NVIDIA_RPM_DIR}"
+# 6. 严苛校验：检查 nvidia.ko 内核模块文件是否构建成功
+FOUND_MODULES=$(find "/usr/lib/modules/${FULL_KERNEL_VER}" -name "nvidia.ko*" 2>/dev/null || true)
+if [[ -z "${FOUND_MODULES}" ]]; then
+    echo "ERROR: NVIDIA kernel module (nvidia.ko) was not built!"
+    echo "Checking /var/cache/akmods/nvidia/ for build log..."
+    cat /var/cache/akmods/nvidia/*.failed.log 2>/dev/null || true
+    exit 1
+fi
+echo "NVIDIA kernel module verified successfully:"
+echo "${FOUND_MODULES}"
 
-# 5. 手动执行被 --noscripts 跳过的关键注册步骤
-# 刷新共享库缓存（替代 nvidia 包的 %post ldconfig 调用）
+# 7. 刷新内核模块依赖关系及共享库缓存
 ldconfig
+depmod -a "${FULL_KERNEL_VER}"
 
-# 6. 在构建阶段为当前内核编译 NVIDIA 内核模块
-akmods --force --kernels "${KERNEL_VER}" || akmods --force || true
-
-# 刷新内核模块依赖图（替代 %post depmod 调用）
-depmod -a "${KERNEL_VER}" || depmod -a || true
-
-# 7. 写入 bootc 内核参数：禁用开源驱动 nouveau，并开启 Nvidia 硬件加速模式。
+# 8. 写入 bootc 内核参数：禁用开源驱动 nouveau，开启 Nvidia DRM 模式
 mkdir -p /usr/lib/bootc/kargs.d
 tee /usr/lib/bootc/kargs.d/00-nvidia.toml <<EOF
-kargs = ["rd.driver.blacklist=nouveau", "modprobe.blacklist=nouveau", "nvidia-drm.modeset=1", "initcall_blacklist=simpledrm_platform_driver_init"]
+kargs = ["rd.driver.blacklist=nouveau", "modprobe.blacklist=nouveau", "nvidia-drm.modeset=1"]
 EOF
 
-# 8. 写入 NVIDIA 显卡高性能与 RTD3 动态电源管理 modprobe 参数
+# 9. 写入 NVIDIA 显卡高性能 modprobe 参数（保持桌面卡及笔记本硬件兼容性）
 mkdir -p /usr/lib/modprobe.d
 tee /usr/lib/modprobe.d/nvidia-performance.conf <<EOF
 # Enable Page Attribute Table (PAT) & fast VRAM memory allocation
 options nvidia NVreg_UsePageAttributeTable=1 NVreg_InitializeSystemMemoryAllocations=0
-# Enable Dynamic Power Management (RTD3) for laptops / hybrid GPUs
-options nvidia NVreg_DynamicPowerManagement=0x03
 EOF
 
 # 移除 nouveau Vulkan ICD，防止与 NVIDIA 驱动冲突
