@@ -22,8 +22,10 @@ echo "Target kernel version: ${FULL_KERNEL_VER}"
 mkdir -p /var/lib/alternatives /var/log /var/tmp /var/cache /var/lib/rpm
 
 # 4. 安装 akmod-nvidia, CUDA 支持以及与当前内核完全匹配的 kernel-devel
+#    使用 tsflags=noscripts 避免 akmod-nvidia 的 %post 脚本因 root 用户运行抛出 ERROR: Not to be used as root 导致事务中断
 dnf5 -y install \
     --setopt=install_weak_deps=False \
+    --setopt=tsflags=nodocs,nocaps,nocontexts,noscripts \
     akmod-nvidia \
     xorg-x11-drv-nvidia-cuda \
     "kernel-devel-${KERNEL_VERSION}"
