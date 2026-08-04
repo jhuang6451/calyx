@@ -9,56 +9,30 @@ set -ouex pipefail
 # COPR packages are installed individually with isolated enablement.
 
 # ==========================================================
-#  软件源与优先级配置
+#  软件源与 RPM Fusion 完整版多媒体/硬件加速驱动配置
 # ==========================================================
-# 使用 negativo17 仓库并设置高优先级（priority=90,数字越小优先级越高），
-# 优先安装此仓库提供的完整版驱动和多媒体插件，覆盖官方仓库的阉割版。
-if ! grep -q fedora-multimedia <(dnf5 repolist); then
-    # Enable or Install Repofile
-    dnf5 config-manager setopt fedora-multimedia.enabled=1 ||
-        dnf5 config-manager addrepo --from-repofile="https://negativo17.org/repos/fedora-multimedia.repo"
+# 启用 RPM Fusion Free 和 Nonfree 仓库
+if ! rpm -q rpmfusion-free-release &>/dev/null; then
+    dnf5 -y install https://mirrors.rpmfusion.org/free/fedora/rpmfusion-free-release-$(rpm -E %fedora).noarch.rpm || true
+fi
+if ! rpm -q rpmfusion-nonfree-release &>/dev/null; then
+    dnf5 -y install https://mirrors.rpmfusion.org/nonfree/fedora/rpmfusion-nonfree-release-$(rpm -E %fedora).noarch.rpm || true
 fi
 
-dnf5 config-manager setopt fedora-multimedia.priority=90
-
-# ==========================================================
-#  硬件加速与图形驱动替换
-# ==========================================================
-# 遵循 Aurora 逻辑：在 distro-sync 前锁定 qt6 和 plasma-desktop，防止第三方源引发局部升级冲突
-dnf5 versionlock add "qt6-*" plasma-desktop
-
-OVERRIDES=(
-    "intel-gmmlib"
-    "intel-mediasdk"
-    "intel-vpl-gpu-rt"
-    "libheif"
-    "libva"
-    "libva-intel-media-driver"
-    "mesa-dri-drivers"
-    "mesa-filesystem"
-    "mesa-libEGL"
-    "mesa-libGL"
-    "mesa-libgbm"
-    "mesa-va-drivers"
-    "mesa-vulkan-drivers"
-)
-
-dnf5 distro-sync --skip-unavailable -y --repo='fedora-multimedia' "${OVERRIDES[@]}"
-dnf5 versionlock add "${OVERRIDES[@]}"
-
-# 多媒体与闭源驱动补丁包
-NEGATIVO_PACKAGES=(
+# 安装完整版多媒体编解码器及 Mesa 硬件加速补充驱动 (freeworld)
+MULTIMEDIA_PACKAGES=(
     ffmpeg
     ffmpeg-libs
     intel-vaapi-driver
     libfdk-aac
     libva-utils
+    mesa-va-drivers-freeworld
+    mesa-vulkan-drivers-freeworld
     pipewire-libs-extra
-    uld
 )
 
-echo "Installing ${#NEGATIVO_PACKAGES[@]} from Negativo..."
-dnf5 -y install --setopt=install_weak_deps=False "${NEGATIVO_PACKAGES[@]}"
+echo "Installing ${#MULTIMEDIA_PACKAGES[@]} multimedia packages from RPM Fusion..."
+dnf5 -y install --setopt=install_weak_deps=False "${MULTIMEDIA_PACKAGES[@]}" || true
 
 # ==========================================================
 #  官方源软件包安装 (整合用户 rpm_list.txt)
