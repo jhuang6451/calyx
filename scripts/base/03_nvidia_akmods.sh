@@ -13,7 +13,6 @@ fi
 dnf5 -y install --setopt=install_weak_deps=False \
     akmod-nvidia \
     xorg-x11-drv-nvidia-cuda \
-    xorg-x11-drv-nvidia-power \
     kernel-devel
 
 # 3. 在构建阶段为当前内核编译 NVIDIA 模块
