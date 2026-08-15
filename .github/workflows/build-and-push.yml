@@ -96,9 +96,11 @@ jobs:
             NVIDIA_ENABLED=${{ matrix.nvidia_enabled }}
           secret-envs: |
             GITHUB_TOKEN=${{ secrets.GITHUB_TOKEN }}
+          layers: true
           extra-args: |
             --retry=5
             --retry-delay=5s
+            --compression-format=zstd:chunked
           oci: true
 
       - name: Push to GHCR
@@ -109,6 +111,8 @@ jobs:
           image: ${{ steps.build-image.outputs.image }}
           tags: ${{ steps.build-image.outputs.tags }}
           registry: ${{ env.REGISTRY }}
+          extra-args: |
+            --compression-format=zstd:chunked
 
       - name: Sign image with Cosign
         if: github.event_name != 'pull_request'

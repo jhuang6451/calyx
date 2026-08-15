@@ -27,6 +27,7 @@ tasks:
       - echo "开始构建 {{.IMAGE_NAME}}:{{.FULL_TAG}} ..."
       - >
         podman build
+        --layers
         --build-arg FEDORA_MAJOR_VERSION={{.FEDORA_VERSION}}
         --build-arg KERNEL={{.KERNEL_VERSION}}
         --build-arg NVIDIA_ENABLED={{.NVIDIA}}

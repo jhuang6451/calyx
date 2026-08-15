@@ -1,8 +1,7 @@
 #!/usr/bin/bash
+set -eoux pipefail
 
 echo "::group:: ===$(basename "$0")==="
-
-set -eoux pipefail
 
 # 1. 确保 RPM Fusion Nonfree 仓库已安装
 if ! rpm -q rpmfusion-nonfree-release &>/dev/null; then
@@ -76,15 +75,13 @@ RemainAfterExit=yes
 WantedBy=multi-user.target
 EOF
 
-systemctl enable nvidia-cdi-generate.service
-
 # 10. 写入 bootc 内核参数：禁用开源驱动 nouveau，开启 Nvidia DRM 模式
 mkdir -p /usr/lib/bootc/kargs.d
 tee /usr/lib/bootc/kargs.d/00-nvidia.toml <<EOF
 kargs = ["rd.driver.blacklist=nouveau", "modprobe.blacklist=nouveau", "nvidia-drm.modeset=1"]
 EOF
 
-# 11. 写入 NVIDIA 显卡高性能 modprobe 参数（保持桌面卡及笔记本硬件兼容性）
+# 11. 写入 NVIDIA 显卡高性能 modprobe 参数
 mkdir -p /usr/lib/modprobe.d
 tee /usr/lib/modprobe.d/nvidia-performance.conf <<EOF
 # Enable Page Attribute Table (PAT) & fast VRAM memory allocation
@@ -96,9 +93,5 @@ rm -f /usr/share/vulkan/icd.d/nouveau_icd.*.json
 
 # 创建 libnvidia-ml.so 符号链接
 ln -sf libnvidia-ml.so.1 /usr/lib64/libnvidia-ml.so
-
-if [ -f /usr/lib/systemd/system/ublue-nvidia-flatpak-runtime-sync.service ]; then
-    systemctl enable ublue-nvidia-flatpak-runtime-sync.service
-fi
 
 echo "::endgroup::"

@@ -24,40 +24,44 @@ ARG IMAGE_NAME="calyx"
 
 ENV PATH="/tmp/bin/:${PATH}"
 
-# 1. 基础安装 (挂载 GITHUB_TOKEN Secret 防止 API 限流)
+# 1. 基础环境初始化与系统软件包安装 (极少变动，体积最大，单独成层缓存)
 RUN --mount=type=tmpfs,dst=/boot \
     --mount=type=tmpfs,dst=/var \
     --mount=type=bind,from=ctx,source=/,target=/ctx \
     --mount=type=cache,dst=/var/cache/libdnf5 \
     --mount=type=secret,id=GITHUB_TOKEN \
     /ctx/scripts/base/00_init.sh && \
-    /ctx/scripts/base/01_packages.sh && \
-    /ctx/scripts/base/02_common_kernel_akmods.sh
+    /ctx/scripts/base/01_packages.sh
 
-# 2. NVIDIA 安装
+# 2. NVIDIA 驱动及内核模块编译 (耗时长，独立成层缓存)
 RUN --mount=type=tmpfs,dst=/boot \
     --mount=type=tmpfs,dst=/var \
     --mount=type=bind,from=ctx,source=/,target=/ctx \
     --mount=type=cache,dst=/var/cache/libdnf5 \
     --mount=type=secret,id=GITHUB_TOKEN \
     if [ "${NVIDIA_ENABLED}" = "true" ]; then \
-        /ctx/scripts/base/03_nvidia_akmods.sh; \
+        /ctx/scripts/base/02_nvidia.sh; \
     else \
         echo "NVIDIA disabled, skipping..."; \
     fi
 
-# 3. 后期配置与清理
+# 3. 增强定制组件与实用工具 (Starship, Nerd Fonts, Mihomo Party 等)
+RUN --mount=type=tmpfs,dst=/boot \
+    --mount=type=tmpfs,dst=/var \
+    --mount=type=bind,from=ctx,source=/,target=/ctx \
+    --mount=type=cache,dst=/var/cache/libdnf5 \
+    --mount=type=secret,id=GITHUB_TOKEN \
+    /ctx/scripts/base/03_custom.sh
+
+# 4. 系统配置文件覆盖、服务管理与构建清理 (最常修改，放最底层，构建秒级完成)
 RUN --mount=type=tmpfs,dst=/boot \
     --mount=type=tmpfs,dst=/var \
     --mount=type=bind,from=ctx,source=/,target=/ctx \
     --mount=type=secret,id=GITHUB_TOKEN \
-    /ctx/scripts/base/04_hotfix.sh && \
-    /ctx/scripts/base/05_custom.sh && \
-    /ctx/scripts/base/06_services.sh && \
-    /ctx/scripts/base/07_flatpak.sh && \
-    /ctx/scripts/base/08_cleanup.sh
+    /ctx/scripts/base/04_configs_services.sh && \
+    /ctx/scripts/base/05_cleanup.sh
 
-# 4. bootc 合规性检查
+# 5. bootc 合规性检查
 RUN --network=none \
     bootc container lint --fatal-warnings --no-truncate
 
