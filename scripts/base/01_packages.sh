@@ -84,7 +84,6 @@ FEDORA_PACKAGES=(
     python3-pip              # Python 包管理器
 
     # --- [硬件管理与底层调试 / Hardware & Low-level Tools] ---
-    akmod-v4l2loopback       # V4L2 虚拟摄像头循环回放内核模块
     alsa-firmware            # 声卡固件
     evtest                   # 输入设备调试
     igt-gpu-tools            # GPU 性能分析
