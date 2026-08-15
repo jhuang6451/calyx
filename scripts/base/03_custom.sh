@@ -1,7 +1,7 @@
 #!/usr/bin/bash
 set -eoux pipefail
 
-echo "::group:: ===$(basename "$0")==="
+echo "==================== [$(basename "$0")] START ===================="
 
 # 1. 救援模式与紧急启动支持 (CoreOS sulogin generator)
 mkdir -p /usr/lib/systemd/system-generators
@@ -77,4 +77,4 @@ else
     exit 1
 fi
 
-echo "::endgroup::"
+echo "==================== [$(basename "$0")] END ===================="

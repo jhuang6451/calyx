@@ -1,7 +1,7 @@
 #!/usr/bin/bash
 set -eoux pipefail
 
-echo "::group:: ===$(basename "$0")==="
+echo "==================== [$(basename "$0")] START ===================="
 
 # 提升 DNF 缓存效率
 dnf5 config-manager setopt keepcache=1
@@ -15,4 +15,4 @@ chmod 777 /var/log/akmods /var/cache/akmods
 install -Dm0755 /ctx/utils/ghcurl /tmp/bin/ghcurl
 install -Dm0755 /ctx/utils/copr-helpers.sh /tmp/bin/copr-helpers.sh
 
-echo "::endgroup::"
+echo "==================== [$(basename "$0")] END ===================="

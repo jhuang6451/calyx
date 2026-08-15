@@ -1,7 +1,7 @@
 #!/usr/bin/bash
 set -eoux pipefail
 
-echo "::group:: ===$(basename "$0")==="
+echo "==================== [$(basename "$0")] START ===================="
 
 # 1. 禁用所有 COPR 仓库
 for i in /etc/yum.repos.d/_copr:*.repo; do
@@ -58,4 +58,4 @@ if [[ -d /opt && -z "$(ls -A /opt 2>/dev/null)" ]]; then
     ln -s /var/opt /opt
 fi
 
-echo "::endgroup::"
+echo "==================== [$(basename "$0")] END ===================="

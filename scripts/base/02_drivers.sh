@@ -1,7 +1,7 @@
 #!/usr/bin/bash
 set -eoux pipefail
 
-echo "::group:: ===$(basename "$0")==="
+echo "==================== [$(basename "$0")] START ===================="
 
 # 1. 确保 RPM Fusion Free / Nonfree 仓库已安装
 if ! rpm -q rpmfusion-free-release &>/dev/null; then
@@ -95,7 +95,7 @@ fi
 
 # 7. 在构建阶段为精确匹配的内核版本编译所有 akmods 模块 (v4l2loopback 以及 nvidia)
 echo "Building akmods kernel modules for ${FULL_KERNEL_VER}..."
-akmods --force --kernels "${FULL_KERNEL_VER}"
+akmods --verbose --force --kernels "${FULL_KERNEL_VER}"
 
 # 8. 校验已编译模块
 FOUND_V4L2=$(find "/usr/lib/modules/${FULL_KERNEL_VER}" -name "v4l2loopback.ko*" 2>/dev/null || true)
@@ -127,4 +127,4 @@ echo "v4l2loopback" > /usr/lib/modules-load.d/v4l2loopback.conf
 ldconfig
 depmod -a "${FULL_KERNEL_VER}"
 
-echo "::endgroup::"
+echo "==================== [$(basename "$0")] END ===================="

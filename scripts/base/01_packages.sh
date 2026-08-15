@@ -1,5 +1,5 @@
 #!/usr/bin/bash
-echo "::group:: ===$(basename "$0")==="
+echo "==================== [$(basename "$0")] START ===================="
 set -ouex pipefail
 
 # NOTE:
@@ -266,4 +266,4 @@ if [[ "${#EXCLUDED_PACKAGES[@]}" -gt 0 ]]; then
 fi
 
 
-echo "::endgroup::"
+echo "==================== [$(basename "$0")] END ===================="

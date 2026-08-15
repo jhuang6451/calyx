@@ -1,7 +1,7 @@
 #!/usr/bin/bash
 set -eoux pipefail
 
-echo "::group:: ===$(basename "$0")==="
+echo "==================== [$(basename "$0")] START ===================="
 
 # 1. 同步仓库中的基础配置覆盖到根文件系统
 echo "Applying base configuration overrides..."
@@ -41,4 +41,4 @@ if [ -d /etc/skel/.ssh ]; then
     chmod 0600 /etc/skel/.ssh/authorized_keys 2>/dev/null || true
 fi
 
-echo "::endgroup::"
+echo "==================== [$(basename "$0")] END ===================="
