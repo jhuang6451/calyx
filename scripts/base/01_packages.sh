@@ -39,6 +39,7 @@ dnf5 -y install --setopt=install_weak_deps=False "${MULTIMEDIA_PACKAGES[@]}" || 
 # ==========================================================
 FEDORA_PACKAGES=(
     # --- [网络身份认证与文件共享 / Network Authentication & File Sharing] ---
+    openssh-server           # OpenSSH 服务端
     adcli                    # 用于 Active Directory 域加入
     krb5-workstation         # Kerberos 客户端，企业内网认证必备
     samba-winbind            # 与 Windows 域整合的核心组件
