@@ -254,11 +254,12 @@ case "$FEDORA_MAJOR_VERSION" in
         ;;
 esac
 
-# Remove excluded packages if they are installed
+# Remove excluded packages if they are installed (use rpm --noscripts to bypass container scriptlet failures)
 if [[ "${#EXCLUDED_PACKAGES[@]}" -gt 0 ]]; then
     readarray -t INSTALLED_EXCLUDED < <(rpm -qa --queryformat='%{NAME}\n' "${EXCLUDED_PACKAGES[@]}" 2>/dev/null || true)
     if [[ "${#INSTALLED_EXCLUDED[@]}" -gt 0 ]]; then
-        dnf5 -y remove "${INSTALLED_EXCLUDED[@]}"
+        echo "Removing ${#INSTALLED_EXCLUDED[@]} excluded packages via rpm --nodeps --noscripts..."
+        rpm -e --nodeps --noscripts "${INSTALLED_EXCLUDED[@]}" || true
     else
         echo "No excluded packages found to remove."
     fi
