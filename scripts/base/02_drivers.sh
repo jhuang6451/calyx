@@ -25,20 +25,25 @@ mkdir -p /var/lib/alternatives /var/log/akmods /var/cache/akmods /var/tmp /tmp /
 chmod 1777 /tmp /var/tmp
 chmod 777 /var/log/akmods /var/cache/akmods
 
-# 4. 安装通用内核开发包与 v4l2loopback 驱动源码包 (使用 tsflags 绕过容器 scriptlet)
+# 4. 安装通用内核开发包、v4l2loopback 源码及编译依赖 (使用 tsflags 绕过容器 scriptlet)
 dnf5 -y install \
     --setopt=install_weak_deps=False \
     --setopt=tsflags=nodocs,nocaps,nocontexts,noscripts \
     akmod-v4l2loopback \
-    "kernel-devel-${KERNEL_VERSION}"
+    "kernel-devel-${KERNEL_VERSION}" \
+    libgcrypt-devel \
+    libuuid-devel \
+    gnutls-devel
 
 # 5. 安装与编译全新的 NTFS resurrection (namjaejeon/linux-ntfs) 原生驱动模块及工具链
 echo "Checking and building NTFS resurrection kernel module..."
 if [[ ! -f "/usr/lib/modules/${FULL_KERNEL_VER}/kernel/fs/ntfs/ntfs.ko" && ! -f "/usr/lib/modules/${FULL_KERNEL_VER}/extra/ntfs/ntfs.ko" ]]; then
     git clone --depth 1 https://github.com/namjaejeon/linux-ntfs.git /tmp/linux-ntfs
-    make -C /tmp/linux-ntfs KDIR="/usr/src/kernels/${FULL_KERNEL_VER}"
+    cd /tmp/linux-ntfs
+    make KDIR="/usr/src/kernels/${FULL_KERNEL_VER}"
     mkdir -p "/usr/lib/modules/${FULL_KERNEL_VER}/extra/ntfs"
     install -m 0644 /tmp/linux-ntfs/ntfs.ko "/usr/lib/modules/${FULL_KERNEL_VER}/extra/ntfs/ntfs.ko"
+    cd /
     rm -rf /tmp/linux-ntfs
 fi
 
