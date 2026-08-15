@@ -100,7 +100,6 @@ jobs:
           extra-args: |
             --retry=5
             --retry-delay=5s
-            --compression-format=zstd:chunked
           oci: true
 
       - name: Push to GHCR
