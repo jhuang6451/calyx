@@ -6,6 +6,7 @@ echo "::group:: ===$(basename "$0")==="
 # 1. 同步仓库中的基础配置覆盖到根文件系统
 echo "Applying base configuration overrides..."
 rsync -rvKl /ctx/source/configs/base/ /
+depmod -a || true
 
 # 2. 配置 Flathub 软件源并屏蔽 Fedora 官方 Flatpak 源
 mkdir -p /etc/flatpak/remotes.d/
