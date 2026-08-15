@@ -84,38 +84,39 @@ jobs:
           
           echo "tags=${TAGS[*]}" >> $GITHUB_OUTPUT
 
-      - name: Build Image with Buildah
+      - name: Build Image with Podman
         id: build-image
-        uses: redhat-actions/buildah-build@v2
-        with:
-          containerfiles: ./Containerfile
-          image: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
-          tags: ${{ steps.tags.outputs.tags }}
-          build-args: |
-            FEDORA_MAJOR_VERSION=${{ steps.vars.outputs.fedora_version }}
-            NVIDIA_ENABLED=${{ matrix.nvidia_enabled }}
-          secret-envs: |
-            GITHUB_TOKEN=${{ secrets.GITHUB_TOKEN }}
-          extra-args: |
-            --retry=5
-            --retry-delay=5s
-          oci: true
+        run: |
+          TAG_FLAGS=()
+          for tag in ${{ steps.tags.outputs.tags }}; do
+            TAG_FLAGS+=("-t" "$tag")
+          done
+          
+          echo "Building image using Podman..."
+          podman build \
+            --build-arg FEDORA_MAJOR_VERSION=${{ steps.vars.outputs.fedora_version }} \
+            --build-arg NVIDIA_ENABLED=${{ matrix.nvidia_enabled }} \
+            --secret id=GITHUB_TOKEN,env=GITHUB_TOKEN \
+            "${TAG_FLAGS[@]}" \
+            -f ./Containerfile .
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Push to GHCR
         if: github.event_name != 'pull_request'
         id: push-to-ghcr
-        uses: redhat-actions/push-to-registry@v2
-        with:
-          image: ${{ steps.build-image.outputs.image }}
-          tags: ${{ steps.build-image.outputs.tags }}
-          registry: ${{ env.REGISTRY }}
-          extra-args: |
-            --compression-format=zstd:chunked
+        run: |
+          for tag in ${{ steps.tags.outputs.tags }}; do
+            echo "Pushing $tag with zstd:chunked compression..."
+            podman push --compression-format=zstd:chunked "$tag"
+          done
 
       - name: Sign image with Cosign
         if: github.event_name != 'pull_request'
         run: |
           for tag in ${{ steps.tags.outputs.tags }}; do
             echo "Signing $tag..."
-            cosign sign --yes "$tag@${{ steps.push-to-ghcr.outputs.digest }}"
+            DIGEST=$(skopeo inspect "docker://$tag" --format '{{.Digest}}')
+            echo "Found digest: $DIGEST for $tag"
+            cosign sign --yes "$tag@$DIGEST"
           done
