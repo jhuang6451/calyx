@@ -18,6 +18,7 @@ if [ "${NVIDIA_ENABLED}" = "true" ]; then
     
     dnf5 -y install \
         --setopt=install_weak_deps=False \
+        --setopt=tsflags=nodocs,nocaps,nocontexts,noscripts \
         xorg-x11-drv-nvidia-cuda \
         nvidia-container-toolkit
 
