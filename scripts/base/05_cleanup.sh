@@ -31,9 +31,11 @@ rm -rf /.gitkeep
 # 5. 确保 Firefox 桌面快捷方式被彻底清理
 rm -f /usr/share/applications/firefox*.desktop
 
-# 6. 为 plugdev 用户组创建 sysusers 配置（满足 bootc lint 检查）
+# 6. 为 plugdev 用户组创建 sysusers 配置并清理临时构建用户（满足 bootc lint 检查）
 mkdir -p /usr/lib/sysusers.d
 echo "g plugdev - -" > /usr/lib/sysusers.d/plugdev.conf
+userdel -r akmodsbuild 2>/dev/null || true
+groupdel akmodsbuild 2>/dev/null || true
 
 # 7. 清理 /var 目录（保留 cache）
 find /var/* -maxdepth 0 -type d \! -name cache -exec rm -fr {} \;

@@ -51,29 +51,41 @@ tasks:
       - echo "提示：由于是 bootc 镜像，直接 run 仅能检查文件系统，无法完全模拟真实启动。"
       - podman run -it --rm {{.IMAGE_NAME}}:{{.FULL_TAG}} /bin/bash
 
-  build-ntfs:
-    desc: "在隔离容器中预编译 NTFS resurrection 内核驱动与 ntfsprogs-plus 工具"
+  build-kmods:
+    desc: "在隔离容器中本地预编译所有内核模块 (v4l2loopback, NVIDIA, NTFS resurrection) 及工具"
     vars:
       TARGET_BASE: "quay.io/fedora-ostree-desktops/kinoite:{{.FEDORA_VERSION}}"
     cmds:
-      - echo "开始预编译 NTFS 驱动与工具链 (基于 {{.TARGET_BASE}}) ..."
-      - mkdir -p source/configs/base/usr/bin source/configs/base/usr/sbin
+      - echo "开始本地预编译所有内核驱动与工具 (基于 {{.TARGET_BASE}}) ..."
+      - mkdir -p source/configs/base/usr/bin source/configs/base/usr/sbin source/configs/base/usr/lib64
       - >
         podman run --rm -v $(pwd):/workspace:z {{.TARGET_BASE}} bash -c '
           set -eoux pipefail
+          dnf5 -y install https://mirrors.rpmfusion.org/free/fedora/rpmfusion-free-release-$(rpm -E %fedora).noarch.rpm https://mirrors.rpmfusion.org/nonfree/fedora/rpmfusion-nonfree-release-$(rpm -E %fedora).noarch.rpm || true
           dnf5 config-manager setopt fedora-repos-archive.enabled=1 || true
           KERNEL_VER=$(rpm -q --queryformat "%{VERSION}-%{RELEASE}.%{ARCH}" kernel-core | head -n1)
           echo "Target Kernel: ${KERNEL_VER}"
-          dnf5 -y install git make gcc "kernel-devel-${KERNEL_VER}" autoconf automake libtool libgcrypt-devel libuuid-devel gnutls-devel
+          dnf5 -y install git make gcc "kernel-devel-${KERNEL_VER}" akmod-v4l2loopback akmod-nvidia autoconf automake libtool libgcrypt-devel libuuid-devel gnutls-devel
           
-          # 1. 编译 linux-ntfs 驱动
+          # 1. 编译 akmods 模块 (v4l2loopback & nvidia)
+          mkdir -p /var/log/akmods /var/cache/akmods /tmp /var/tmp
+          chmod 1777 /tmp /var/tmp
+          chmod 777 /var/log/akmods /var/cache/akmods
+          akmods --verbose --force --kernels "${KERNEL_VER}"
+          
+          mkdir -p "/workspace/source/configs/base/usr/lib/modules/${KERNEL_VER}/extra/v4l2loopback"
+          mkdir -p "/workspace/source/configs/base/usr/lib/modules/${KERNEL_VER}/extra/nvidia"
+          find "/usr/lib/modules/${KERNEL_VER}" -name "*v4l2loopback*.ko*" -exec cp -a {} "/workspace/source/configs/base/usr/lib/modules/${KERNEL_VER}/extra/v4l2loopback/" \;
+          find "/usr/lib/modules/${KERNEL_VER}" -name "*nvidia*.ko*" -exec cp -a {} "/workspace/source/configs/base/usr/lib/modules/${KERNEL_VER}/extra/nvidia/" \;
+          
+          # 2. 编译 linux-ntfs 驱动
           git clone --depth 1 https://github.com/namjaejeon/linux-ntfs.git /tmp/linux-ntfs
           cd /tmp/linux-ntfs
           make KDIR="/usr/src/kernels/${KERNEL_VER}"
           mkdir -p "/workspace/source/configs/base/usr/lib/modules/${KERNEL_VER}/extra/ntfs"
           install -m 0644 /tmp/linux-ntfs/ntfs.ko "/workspace/source/configs/base/usr/lib/modules/${KERNEL_VER}/extra/ntfs/ntfs.ko"
           
-          # 2. 编译 ntfsprogs-plus 用户态工具
+          # 3. 编译 ntfsprogs-plus 用户态工具与运行库
           git clone --depth 1 https://github.com/ntfsprogs-plus/ntfsprogs-plus.git /tmp/ntfsprogs-plus
           cd /tmp/ntfsprogs-plus
           ./autogen.sh
@@ -83,7 +95,8 @@ tasks:
           
           cp -a /tmp/ntfs-dist/usr/bin/* /workspace/source/configs/base/usr/bin/ 2>/dev/null || true
           cp -a /tmp/ntfs-dist/usr/sbin/* /workspace/source/configs/base/usr/sbin/ 2>/dev/null || true
-          echo "NTFS resurrection 驱动与工具编译完成！产物已写入 source/configs/base/"
+          cp -a /tmp/ntfs-dist/usr/lib64/libntfs.so* /workspace/source/configs/base/usr/lib64/ 2>/dev/null || true
+          echo "所有内核驱动模块与工具本地编译完成！产物已写入 source/configs/base/"
         '
 
   iso:
