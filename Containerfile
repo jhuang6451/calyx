@@ -24,40 +24,20 @@ ARG IMAGE_NAME="calyx"
 
 ENV PATH="/tmp/bin/:${PATH}"
 
-# 1. 基础环境初始化与系统软件包安装 (极少变动，体积最大，单独成层缓存)
+# 1. 运行完整镜像定制与驱动构建流水线 (单次执行，无中间层磁盘开销)
 RUN --mount=type=tmpfs,dst=/boot \
     --mount=type=tmpfs,dst=/var \
     --mount=type=bind,from=ctx,source=/,target=/ctx \
     --mount=type=cache,dst=/var/cache/libdnf5 \
     --mount=type=secret,id=GITHUB_TOKEN \
     /ctx/scripts/base/00_init.sh && \
-    /ctx/scripts/base/01_packages.sh
-
-# 2. 内核驱动及硬件模块编译 (v4l2loopback, NTFS resurrection, NVIDIA akmods 等)
-RUN --mount=type=tmpfs,dst=/boot \
-    --mount=type=tmpfs,dst=/var \
-    --mount=type=bind,from=ctx,source=/,target=/ctx \
-    --mount=type=cache,dst=/var/cache/libdnf5 \
-    --mount=type=secret,id=GITHUB_TOKEN \
-    /ctx/scripts/base/02_drivers.sh
-
-# 3. 增强定制组件与实用工具 (Starship, Nerd Fonts, Mihomo Party 等)
-RUN --mount=type=tmpfs,dst=/boot \
-    --mount=type=tmpfs,dst=/var \
-    --mount=type=bind,from=ctx,source=/,target=/ctx \
-    --mount=type=cache,dst=/var/cache/libdnf5 \
-    --mount=type=secret,id=GITHUB_TOKEN \
-    /ctx/scripts/base/03_custom.sh
-
-# 4. 系统配置文件覆盖、服务管理与构建清理 (最常修改，放最底层，构建秒级完成)
-RUN --mount=type=tmpfs,dst=/boot \
-    --mount=type=tmpfs,dst=/var \
-    --mount=type=bind,from=ctx,source=/,target=/ctx \
-    --mount=type=secret,id=GITHUB_TOKEN \
+    /ctx/scripts/base/01_packages.sh && \
+    /ctx/scripts/base/02_drivers.sh && \
+    /ctx/scripts/base/03_custom.sh && \
     /ctx/scripts/base/04_configs_services.sh && \
     /ctx/scripts/base/05_cleanup.sh
 
-# 5. bootc 合规性检查
+# 2. bootc 合规性检查
 RUN --network=none \
     bootc container lint --fatal-warnings --no-truncate
 
