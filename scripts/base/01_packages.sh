@@ -77,6 +77,9 @@ FEDORA_PACKAGES=(
     stow                     # Dotfiles 管理工具
     helix                    # 现代文本编辑器 (hx)
     cmake                    # 编译构建工具
+    autoconf
+    automake
+    libtool
     gcc
     gcc-c++
     golang                   # Go 语言环境

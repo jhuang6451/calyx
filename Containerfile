@@ -33,17 +33,13 @@ RUN --mount=type=tmpfs,dst=/boot \
     /ctx/scripts/base/00_init.sh && \
     /ctx/scripts/base/01_packages.sh
 
-# 2. NVIDIA 驱动及内核模块编译 (耗时长，独立成层缓存)
+# 2. 内核驱动及硬件模块编译 (v4l2loopback, NTFS resurrection, NVIDIA akmods 等)
 RUN --mount=type=tmpfs,dst=/boot \
     --mount=type=tmpfs,dst=/var \
     --mount=type=bind,from=ctx,source=/,target=/ctx \
     --mount=type=cache,dst=/var/cache/libdnf5 \
     --mount=type=secret,id=GITHUB_TOKEN \
-    if [ "${NVIDIA_ENABLED}" = "true" ]; then \
-        /ctx/scripts/base/02_nvidia.sh; \
-    else \
-        echo "NVIDIA disabled, skipping..."; \
-    fi
+    /ctx/scripts/base/02_drivers.sh
 
 # 3. 增强定制组件与实用工具 (Starship, Nerd Fonts, Mihomo Party 等)
 RUN --mount=type=tmpfs,dst=/boot \
