@@ -6,7 +6,15 @@ echo "==================== [$(basename "$0")] START ===================="
 # 1. 同步仓库中的基础配置覆盖到根文件系统
 echo "Applying base configuration overrides..."
 rsync -rvKl /ctx/source/configs/base/ /
-depmod -a || true
+
+# 为容器内安装的每个内核版本生成模块依赖关系（在 CI 容器环境中不能直接执行无参数的 depmod -a，因为 uname -r 返回的是宿主机内核）
+for kdir in /usr/lib/modules/*; do
+    if [ -d "$kdir" ]; then
+        kver=$(basename "$kdir")
+        echo "Updating module dependencies for ${kver}..."
+        depmod -a "${kver}"
+    fi
+done
 
 # 2. 配置 Flathub 软件源并屏蔽 Fedora 官方 Flatpak 源
 mkdir -p /etc/flatpak/remotes.d/

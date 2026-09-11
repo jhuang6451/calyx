@@ -60,4 +60,13 @@ if [[ -d /opt && -z "$(ls -A /opt 2>/dev/null)" ]]; then
     ln -s /var/opt /opt
 fi
 
+# 11. 刷新所有内核版本的模块依赖关系
+for kdir in /usr/lib/modules/*; do
+    if [ -d "$kdir" ]; then
+        kver=$(basename "$kdir")
+        echo "Updating module dependencies for ${kver}..."
+        depmod -a "${kver}"
+    fi
+done
+
 echo "==================== [$(basename "$0")] END ===================="

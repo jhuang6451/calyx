@@ -26,16 +26,30 @@ if [ "${NVIDIA_ENABLED}" = "true" ]; then
         nvidia-ctk config --set nvidia-container-cli.mode=cdi || true
     fi
 
+    # 配置开机自动加载 NVIDIA 内核模块（确保 nvidia-uvm 及其设备节点在开机时生成）
+    mkdir -p /usr/lib/modules-load.d
+    tee /usr/lib/modules-load.d/nvidia.conf <<EOF
+nvidia
+nvidia-modeset
+nvidia-uvm
+nvidia-drm
+EOF
+
+    # 启用持久化守护进程以保持设备节点
+    systemctl enable nvidia-persistenced.service
+
     # 创建开机自动生成 CDI 配置文件的 Systemd 服务
     mkdir -p /usr/lib/systemd/system
     tee /usr/lib/systemd/system/nvidia-cdi-generate.service <<EOF
 [Unit]
 Description=Generate NVIDIA CDI Specification for Container Runtimes (Podman/Docker)
-After=multi-user.target
+After=multi-user.target nvidia-persistenced.service systemd-modules-load.service
+Wants=nvidia-persistenced.service
 ConditionPathExists=/usr/bin/nvidia-ctk
 
 [Service]
 Type=oneshot
+ExecStartPre=-/usr/bin/nvidia-modprobe -u -c=0
 ExecStart=/usr/bin/nvidia-ctk cdi generate --output=/etc/cdi/nvidia.yaml
 RemainAfterExit=yes
 
