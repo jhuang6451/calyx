@@ -1,0 +1,31 @@
+#!/usr/bin/bash
+set -euo pipefail
+
+# Check if NVIDIA module is loaded
+if [ ! -f /sys/module/nvidia/version ]; then
+    echo "NVIDIA module not loaded, skipping Flatpak runtime sync."
+    exit 0
+fi
+
+# Get host NVIDIA driver version
+NV_VER=$(cat /sys/module/nvidia/version | cut -d' ' -f1 | tr '.' '-')
+
+echo "Synchronizing NVIDIA Flatpak GL runtime for driver version: ${NV_VER}..."
+
+# Check if flatpak command exists
+if ! command -v flatpak &>/dev/null; then
+    echo "Flatpak command not found, skipping."
+    exit 0
+fi
+
+# Install matching Flatpak GL runtime if not present
+FLATPAK_RUNTIME="org.freedesktop.Platform.GL.nvidia-${NV_VER}"
+
+if ! flatpak list --system | grep -q "${FLATPAK_RUNTIME}"; then
+    echo "Installing ${FLATPAK_RUNTIME}..."
+    flatpak install --system -y flathub "${FLATPAK_RUNTIME}" || true
+else
+    echo "${FLATPAK_RUNTIME} is already installed."
+fi
+
+exit 0

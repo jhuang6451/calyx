@@ -1,0 +1,18 @@
+[Unit]
+Description=Background Flatpak Preinstall Service
+ConditionPathExistsGlob=/usr/share/flatpak/preinstall.d/*.preinstall
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/flatpak preinstall -y --system
+Nice=19
+CPUSchedulingPolicy=idle
+IOSchedulingClass=idle
+RemainAfterExit=yes
+TimeoutStartSec=1h
+StandardOutput=journal+console
+
+[Install]
+WantedBy=multi-user.target
