@@ -1,2 +1,14 @@
 .tmp/
 .log/
+.kernel-lock
+
+# Kernel modules and binary build outputs
+*.ko
+*.ko.xz
+source/configs/base/usr/lib/modules/
+source/configs/base/usr/bin/ntfs*
+source/configs/base/usr/sbin/ntfs*
+source/configs/base/usr/sbin/fsck.ntfs
+source/configs/base/usr/sbin/mkfs.ntfs
+source/configs/base/usr/sbin/mkntfs
+source/configs/base/usr/lib64/libntfs*

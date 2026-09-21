@@ -1,0 +1,16 @@
+[Unit]
+Description=Automated weekly build and push for Calyx bootc image
+After=network-online.target registry.service
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+WorkingDirectory=%h/calyx
+ExecStart=/usr/bin/bash scripts/auto-build.sh
+StandardOutput=journal
+StandardError=journal
+# 镜像构建过程可能耗时较长，预留充分的超时阈值
+TimeoutStartSec=7200
+
+[Install]
+WantedBy=default.target

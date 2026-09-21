@@ -2,9 +2,17 @@ version: '3'
 
 vars:
   FEDORA_VERSION: '44'
-  KERNEL_VERSION: '7.0.12-201.fc44.x86_64'
-  NVIDIA: 'false'
+  DEFAULT_REGISTRY:
+    sh: |
+      if [ -e ~/.config/containers/systemd/registry/registry.container ] || podman ps --format '{{.Names}}' 2>/dev/null | grep -q '^registry$'; then
+        echo "127.0.0.1:5000"
+      else
+        echo "192.168.31.4:5000"
+      fi
+  REGISTRY: '{{.REGISTRY | default .DEFAULT_REGISTRY}}'
+  PUBLIC_REGISTRY: 'registry.elix1r.top'
   IMAGE_NAME: 'calyx'
+  NVIDIA: 'false'
 
 tasks:
   default:
@@ -16,23 +24,34 @@ tasks:
     cmds:
       - task --list
 
+  ensure-kmods:
+    desc: "动态识别基础镜像内核版本，并在需要时编译并推送驱动中间镜像至私有仓"
+    cmds:
+      - ./scripts/ensure-kmods.sh {{.FEDORA_VERSION}} kinoite quay.io/fedora-ostree-desktops {{.REGISTRY}}
+
   build:
     desc: "构建 bootc 镜像 (用法: task build NVIDIA=true)"
-    deps: [chmod]
+    deps: [chmod, ensure-kmods]
     vars:
+      KERNEL_VERSION:
+        sh: cat .kernel-lock 2>/dev/null || echo "unknown"
       KERNEL_SHORT: '{{index (splitList "-" .KERNEL_VERSION) 0}}'
       NVIDIA_SUFFIX: '{{if eq .NVIDIA "true"}}-nvidia{{else}}{{end}}'
       FULL_TAG: '{{.FEDORA_VERSION}}-{{.KERNEL_SHORT}}{{.NVIDIA_SUFFIX}}'
     cmds:
-      - echo "开始构建 {{.IMAGE_NAME}}:{{.FULL_TAG}} ..."
+      - 'echo "开始构建 {{.REGISTRY}}/{{.IMAGE_NAME}}:{{.FULL_TAG}} (内核锁定: {{.KERNEL_VERSION}}) ..."'
       - >
         podman build
         --build-arg FEDORA_MAJOR_VERSION={{.FEDORA_VERSION}}
-        --build-arg KERNEL={{.KERNEL_VERSION}}
+        --build-arg KERNEL_VERSION={{.KERNEL_VERSION}}
         --build-arg NVIDIA_ENABLED={{.NVIDIA}}
-        -t {{.IMAGE_NAME}}:{{.FULL_TAG}}
+        --build-arg REGISTRY={{.REGISTRY}}
+        -t {{.REGISTRY}}/{{.IMAGE_NAME}}:{{.FULL_TAG}}
+        -t {{.REGISTRY}}/{{.IMAGE_NAME}}:latest{{.NVIDIA_SUFFIX}}
+        -t {{.PUBLIC_REGISTRY}}/{{.IMAGE_NAME}}:{{.FULL_TAG}}
+        -t {{.PUBLIC_REGISTRY}}/{{.IMAGE_NAME}}:latest{{.NVIDIA_SUFFIX}}
         -f Containerfile .
-      - echo "构建完成！镜像已存入本地 podman:{{.IMAGE_NAME}}:{{.FULL_TAG}}"
+      - 'echo "构建完成！系统镜像: {{.REGISTRY}}/{{.IMAGE_NAME}}:{{.FULL_TAG}}"'
 
   build-nvidia:
     desc: "快捷构建 NVIDIA 版本"
@@ -41,78 +60,81 @@ tasks:
         vars:
           NVIDIA: 'true'
 
-  run:
-    desc: "启动容器进行调试"
+  build-and-push:
+    desc: "一键构建并推送系统镜像至私有仓 (用法: task build-and-push NVIDIA=true)"
+    cmds:
+      - task: build
+        vars:
+          NVIDIA: '{{.NVIDIA}}'
+      - task: push
+        vars:
+          NVIDIA: '{{.NVIDIA}}'
+
+  build-and-push-nvidia:
+    desc: "快捷一键构建并推送 NVIDIA 系统镜像"
+    cmds:
+      - task: build-and-push
+        vars:
+          NVIDIA: 'true'
+
+  auto-build:
+    desc: "全自动构建流水线 (含 git pull、构建驱动、构建镜像、推送与清理)"
+    cmds:
+      - ./scripts/auto-build.sh
+
+  push:
+    desc: "推送系统镜像至本地私有仓并执行版本淘汰 (用法: task push NVIDIA=true)"
     vars:
+      KERNEL_VERSION:
+        sh: cat .kernel-lock 2>/dev/null || echo "unknown"
+      KERNEL_SHORT: '{{index (splitList "-" .KERNEL_VERSION) 0}}'
+      NVIDIA_SUFFIX: '{{if eq .NVIDIA "true"}}-nvidia{{else}}{{end}}'
+      FULL_TAG: '{{.FEDORA_VERSION}}-{{.KERNEL_SHORT}}{{.NVIDIA_SUFFIX}}'
+    cmds:
+      - 'echo "推送到私有仓库: {{.REGISTRY}}/{{.IMAGE_NAME}} ..."'
+      - podman push --tls-verify=false {{.REGISTRY}}/{{.IMAGE_NAME}}:{{.FULL_TAG}}
+      - podman push --tls-verify=false {{.REGISTRY}}/{{.IMAGE_NAME}}:latest{{.NVIDIA_SUFFIX}}
+      - 'echo "执行镜像版本生命周期淘汰 (calyx 保留 <= 3 版本)..."'
+      - REGISTRY="{{.REGISTRY}}" ./scripts/manage-registry-retention.sh
+
+  push-nvidia:
+    desc: "快捷推送 NVIDIA 版本至本地私有仓"
+    cmds:
+      - task: push
+        vars:
+          NVIDIA: 'true'
+
+  run:
+    desc: "启动容器进行基础检查"
+    vars:
+      KERNEL_VERSION:
+        sh: cat .kernel-lock 2>/dev/null || echo "unknown"
       KERNEL_SHORT: '{{index (splitList "-" .KERNEL_VERSION) 0}}'
       NVIDIA_SUFFIX: '{{if eq .NVIDIA "true"}}-nvidia{{else}}{{end}}'
       FULL_TAG: '{{.FEDORA_VERSION}}-{{.KERNEL_SHORT}}{{.NVIDIA_SUFFIX}}'
     cmds:
       - echo "提示：由于是 bootc 镜像，直接 run 仅能检查文件系统，无法完全模拟真实启动。"
-      - podman run -it --rm {{.IMAGE_NAME}}:{{.FULL_TAG}} /bin/bash
+      - podman run -it --rm {{.REGISTRY}}/{{.IMAGE_NAME}}:{{.FULL_TAG}} /bin/bash
 
-  update-kmods:
-    desc: "自动检测最新内核版本，并在有更新时在本地容器编译驱动并推送至 GitHub"
+  prune:
+    desc: "根据保留规则清理私有仓库与本地旧镜像 (kmods<=2, calyx<=3)"
     cmds:
-      - ./scripts/auto-update-kmods.sh {{.FEDORA_VERSION}}
+      - REGISTRY="{{.REGISTRY}}" ./scripts/manage-registry-retention.sh
 
-  build-kmods:
-    desc: "在隔离容器中本地预编译所有内核模块 (v4l2loopback, NVIDIA, NTFS resurrection) 及工具"
-    vars:
-      TARGET_BASE: "quay.io/fedora-ostree-desktops/kinoite:{{.FEDORA_VERSION}}"
+  clean-repo:
+    desc: "清理 Git 工作区残留的内核模块与二进制编译产物"
     cmds:
-      - echo "开始本地预编译所有内核驱动与工具 (基于 {{.TARGET_BASE}}) ..."
-      - mkdir -p source/configs/base/usr/bin source/configs/base/usr/sbin source/configs/base/usr/lib64
-      - >
-        podman run --rm -v $(pwd):/workspace:z {{.TARGET_BASE}} bash -c '
-          set -eoux pipefail
-          dnf5 -y install https://mirrors.rpmfusion.org/free/fedora/rpmfusion-free-release-$(rpm -E %fedora).noarch.rpm https://mirrors.rpmfusion.org/nonfree/fedora/rpmfusion-nonfree-release-$(rpm -E %fedora).noarch.rpm || true
-          dnf5 config-manager setopt fedora-repos-archive.enabled=1 || true
-          KERNEL_VER=$(rpm -q --queryformat "%{VERSION}-%{RELEASE}.%{ARCH}" kernel-core | head -n1)
-          echo "Target Kernel: ${KERNEL_VER}"
-          dnf5 -y install git make gcc "kernel-devel-${KERNEL_VER}" akmod-v4l2loopback akmod-nvidia autoconf automake libtool libgcrypt-devel libuuid-devel gnutls-devel
-          
-          # 1. 编译 akmods 模块 (v4l2loopback & nvidia)
-          mkdir -p /var/log/akmods /var/cache/akmods /tmp /var/tmp
-          chmod 1777 /tmp /var/tmp
-          chmod 777 /var/log/akmods /var/cache/akmods
-          akmods --verbose --force --kernels "${KERNEL_VER}"
-          
-          mkdir -p "/workspace/source/configs/base/usr/lib/modules/${KERNEL_VER}/extra/v4l2loopback"
-          mkdir -p "/workspace/source/configs/base/usr/lib/modules/${KERNEL_VER}/extra/nvidia"
-          find "/usr/lib/modules/${KERNEL_VER}" -name "*v4l2loopback*.ko*" -exec cp -a {} "/workspace/source/configs/base/usr/lib/modules/${KERNEL_VER}/extra/v4l2loopback/" \;
-          find "/usr/lib/modules/${KERNEL_VER}" -name "*nvidia*.ko*" -exec cp -a {} "/workspace/source/configs/base/usr/lib/modules/${KERNEL_VER}/extra/nvidia/" \;
-          
-          # 2. 编译 linux-ntfs 驱动
-          git clone --depth 1 https://github.com/namjaejeon/linux-ntfs.git /tmp/linux-ntfs
-          cd /tmp/linux-ntfs
-          make KDIR="/usr/src/kernels/${KERNEL_VER}"
-          mkdir -p "/workspace/source/configs/base/usr/lib/modules/${KERNEL_VER}/extra/ntfs"
-          install -m 0644 /tmp/linux-ntfs/ntfs.ko "/workspace/source/configs/base/usr/lib/modules/${KERNEL_VER}/extra/ntfs/ntfs.ko"
-          
-          # 3. 编译 ntfsprogs-plus 用户态工具与运行库
-          git clone --depth 1 https://github.com/ntfsprogs-plus/ntfsprogs-plus.git /tmp/ntfsprogs-plus
-          cd /tmp/ntfsprogs-plus
-          ./autogen.sh
-          ./configure --prefix=/usr --exec-prefix=/usr --sbindir=/usr/sbin --bindir=/usr/bin --libdir=/usr/lib64
-          make -j$(nproc)
-          make install DESTDIR=/tmp/ntfs-dist
-          
-          cp -a /tmp/ntfs-dist/usr/bin/* /workspace/source/configs/base/usr/bin/ 2>/dev/null || true
-          cp -a /tmp/ntfs-dist/usr/sbin/* /workspace/source/configs/base/usr/sbin/ 2>/dev/null || true
-          cp -a /tmp/ntfs-dist/usr/lib64/libntfs.so* /workspace/source/configs/base/usr/lib64/ 2>/dev/null || true
-          echo "所有内核驱动模块与工具本地编译完成！产物已写入 source/configs/base/"
-        '
-
-  iso:
-    desc: "(预留) 将镜像打包为 ISO"
-    cmds:
-      - echo "ISO 打包流程通常使用 bootc-image-builder。"
-      - echo "示例：sudo podman run --rm -it --privileged -v .:/output -v /var/run/docker.sock:/var/run/docker.sock quay.io/centos-bootc/bootc-image-builder --type iso {{.IMAGE_NAME}}:TAG"
+      - rm -rf source/configs/base/usr/lib/modules/*
+      - rm -f source/configs/base/usr/bin/ntfs*
+      - rm -f source/configs/base/usr/sbin/ntfs*
+      - rm -f source/configs/base/usr/sbin/fsck.ntfs source/configs/base/usr/sbin/mkfs.ntfs source/configs/base/usr/sbin/mkntfs
+      - rm -f source/configs/base/usr/lib64/libntfs*
+      - echo "工作区二进制产物已清理干净！"
 
   chmod:
     desc: "为所有脚本设置执行权限"
     cmds:
-      - chmod +x scripts/base/*.sh
-      - chmod +x utils/*
+      - chmod +x scripts/*.sh 2>/dev/null || true
+      - chmod +x scripts/base/*.sh 2>/dev/null || true
+      - chmod +x utils/* 2>/dev/null || true
     silent: true

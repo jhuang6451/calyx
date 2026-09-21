@@ -3,8 +3,9 @@ set -eoux pipefail
 
 echo "==================== [$(basename "$0")] START ===================="
 
-# 提升 DNF 缓存效率
+# 提升 DNF 缓存效率并锁定内核包防止被任何依赖升级破坏一致性
 dnf5 config-manager setopt keepcache=1
+dnf5 config-manager setopt excludepkgs="kernel,kernel-core,kernel-modules,kernel-modules-core,kernel-modules-extra"
 
 # 准备临时目录与构建缓存目录 (针对 tmpfs /var 挂载预建必要子目录)
 mkdir -p /tmp/bin /var/tmp /var/log/akmods /var/cache/akmods /var/lib/alternatives /var/lib/rpm /var/cache
