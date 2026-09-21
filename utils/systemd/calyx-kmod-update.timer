@@ -1,0 +1,11 @@
+[Unit]
+Description=Run Calyx kernel module auto-updater daily
+Persistent=true
+
+[Timer]
+# 每天凌晨 3:30 自动检测是否有新内核
+OnCalendar=*-*-* 03:30:00
+RandomizedDelaySec=600
+
+[Install]
+WantedBy=timers.target

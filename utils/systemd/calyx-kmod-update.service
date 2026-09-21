@@ -1,0 +1,14 @@
+[Unit]
+Description=Auto-build and push Calyx kernel modules on new Fedora kernel
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+WorkingDirectory=%h/calyx
+ExecStart=/usr/bin/bash scripts/auto-update-kmods.sh 44
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=default.target

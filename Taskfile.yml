@@ -51,6 +51,11 @@ tasks:
       - echo "提示：由于是 bootc 镜像，直接 run 仅能检查文件系统，无法完全模拟真实启动。"
       - podman run -it --rm {{.IMAGE_NAME}}:{{.FULL_TAG}} /bin/bash
 
+  update-kmods:
+    desc: "自动检测最新内核版本，并在有更新时在本地容器编译驱动并推送至 GitHub"
+    cmds:
+      - ./scripts/auto-update-kmods.sh {{.FEDORA_VERSION}}
+
   build-kmods:
     desc: "在隔离容器中本地预编译所有内核模块 (v4l2loopback, NVIDIA, NTFS resurrection) 及工具"
     vars:
