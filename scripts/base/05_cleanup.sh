@@ -45,13 +45,12 @@ find /run -mindepth 1 \
   ! -path '/run/systemd' \
   ! -path '/run/systemd/resolve' \
   ! -path '/run/systemd/resolve/stub-resolv.conf' \
-  ! -path '/run/secrets' \
-  ! -path '/run/secrets/*' \
   ! -path '/run/.containerenv' \
   -delete 2>/dev/null || true
+rm -rf /run/secrets 2>/dev/null || true
 
 # 9. 清理 /tmp 临时文件
-rm -rf /tmp/*
+rm -rf /tmp/* /tmp/.* 2>/dev/null || true
 mkdir -p /var/tmp
 
 # 10. 处理 /opt 软链接兼容性

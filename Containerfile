@@ -29,7 +29,7 @@ RUN --mount=type=tmpfs,dst=/boot \
     --mount=type=tmpfs,dst=/var \
     --mount=type=bind,from=ctx,source=/,target=/ctx \
     --mount=type=cache,dst=/var/cache/libdnf5 \
-    --mount=type=secret,id=GITHUB_TOKEN \
+    --mount=type=secret,id=GITHUB_TOKEN,target=/var/secrets/GITHUB_TOKEN \
     /ctx/scripts/base/00_init.sh && \
     /ctx/scripts/base/01_packages.sh && \
     /ctx/scripts/base/02_drivers.sh && \
