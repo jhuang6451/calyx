@@ -24,6 +24,21 @@ tasks:
     cmds:
       - task --list
 
+  pull:
+    desc: "从 GitHub 远程仓库拉取最新代码并保持工作区纯净"
+    cmds:
+      - 'echo "==> 正在从远程仓库同步最新代码 (origin/master) ..."'
+      - git fetch origin master
+      - git checkout master
+      - git merge --ff-only origin/master || git reset --hard origin/master
+      - 'echo "==> 代码已同步至最新提交: $(git rev-parse --short HEAD)"'
+
+  pull-base:
+    desc: "从上游远程镜像仓库拉取最新基础镜像"
+    cmds:
+      - 'echo "==> 正在从上游镜像仓库拉取基础镜像: quay.io/fedora-ostree-desktops/kinoite:{{.FEDORA_VERSION}} ..."'
+      - podman pull quay.io/fedora-ostree-desktops/kinoite:{{.FEDORA_VERSION}}
+
   ensure-kmods:
     desc: "动态识别基础镜像内核版本，并在需要时编译并推送驱动中间镜像至私有仓"
     cmds:
