@@ -242,6 +242,7 @@ EXCLUDED_PACKAGES=(
     kmines
     kmahjongg
     kde-partitionmanager       # 移除分区工具 (已选用 GParted)
+    ntfs-3g                    # 移除 FUSE 版 NTFS 驱动以优先使用内核态驱动
 )
 
 # Version-specific package exclusions
