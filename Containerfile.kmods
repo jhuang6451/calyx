@@ -1,0 +1,66 @@
+ARG FEDORA_MAJOR_VERSION=44
+ARG BASE_IMAGE_ORG=quay.io/fedora-ostree-desktops
+ARG BASE_IMAGE_NAME=kinoite
+ARG TARGET_BASE=${BASE_IMAGE_ORG}/${BASE_IMAGE_NAME}:${FEDORA_MAJOR_VERSION}
+
+FROM ${TARGET_BASE} AS builder
+
+ARG KERNEL_VER
+
+RUN --mount=type=tmpfs,dst=/tmp \
+    --mount=type=tmpfs,dst=/var \
+    bash <<'EOF'
+set -eoux pipefail
+
+# 启用 RPM Fusion 仓库与归档源
+dnf5 -y install https://mirrors.rpmfusion.org/free/fedora/rpmfusion-free-release-$(rpm -E %fedora).noarch.rpm \
+                https://mirrors.rpmfusion.org/nonfree/fedora/rpmfusion-nonfree-release-$(rpm -E %fedora).noarch.rpm || true
+dnf5 config-manager setopt fedora-repos-archive.enabled=1 || true
+
+TARGET_KERNEL="${KERNEL_VER:-$(rpm -q --queryformat "%{VERSION}-%{RELEASE}.%{ARCH}" kernel-core | head -n1)}"
+echo "Target Kernel to build modules: ${TARGET_KERNEL}"
+
+# 安装编译构建核心依赖 (使用 noscripts 避免 akmod 软件包 post 钩子提前以 root 身份触发构建失败)
+dnf5 -y install --setopt=tsflags=noscripts git make gcc "kernel-devel-${TARGET_KERNEL}" akmod-v4l2loopback akmod-nvidia autoconf automake libtool libgcrypt-devel libuuid-devel gnutls-devel
+
+# 1. 初始化 akmods 运行权限并编译 akmods 模块 (v4l2loopback & nvidia)
+systemd-sysusers 2>/dev/null || true
+mkdir -p /var/log/akmods /var/cache/akmods /tmp /var/tmp
+chmod 1777 /tmp /var/tmp
+chown -R 961:961 /var/log/akmods /var/cache/akmods 2>/dev/null || true
+chmod 777 /var/log/akmods /var/cache/akmods
+
+akmods --verbose --force --kernels "${TARGET_KERNEL}"
+
+mkdir -p "/out/modules/${TARGET_KERNEL}/extra/v4l2loopback"
+mkdir -p "/out/modules/${TARGET_KERNEL}/extra/nvidia"
+find "/usr/lib/modules/${TARGET_KERNEL}" -name "*v4l2loopback*.ko*" -exec cp -a {} "/out/modules/${TARGET_KERNEL}/extra/v4l2loopback/" \;
+find "/usr/lib/modules/${TARGET_KERNEL}" -name "*nvidia*.ko*" -exec cp -a {} "/out/modules/${TARGET_KERNEL}/extra/nvidia/" \;
+
+# 2. 编译 linux-ntfs 内核驱动
+git clone --depth 1 https://github.com/namjaejeon/linux-ntfs.git /tmp/linux-ntfs
+cd /tmp/linux-ntfs
+make KDIR="/usr/src/kernels/${TARGET_KERNEL}"
+mkdir -p "/out/modules/${TARGET_KERNEL}/extra/ntfs"
+install -m 0644 /tmp/linux-ntfs/ntfs.ko "/out/modules/${TARGET_KERNEL}/extra/ntfs/ntfs.ko"
+
+# 3. 编译 ntfsprogs-plus 用户态工具与运行库
+git clone --depth 1 https://github.com/ntfsprogs-plus/ntfsprogs-plus.git /tmp/ntfsprogs-plus
+cd /tmp/ntfsprogs-plus
+./autogen.sh
+./configure --prefix=/usr --exec-prefix=/usr --sbindir=/usr/sbin --bindir=/usr/bin --libdir=/usr/lib64
+make -j$(nproc)
+make install DESTDIR=/tmp/ntfs-dist
+
+mkdir -p /out/tools/bin /out/tools/sbin /out/tools/lib64
+cp -a /tmp/ntfs-dist/usr/bin/* /out/tools/bin/ 2>/dev/null || true
+cp -a /tmp/ntfs-dist/usr/sbin/* /out/tools/sbin/ 2>/dev/null || true
+cp -a /tmp/ntfs-dist/usr/lib64/libntfs.so* /out/tools/lib64/ 2>/dev/null || true
+
+echo "=== Kernel Modules and Tools built successfully for ${TARGET_KERNEL} ==="
+EOF
+
+FROM scratch
+COPY --from=builder /out/ /
+LABEL org.opencontainers.image.title="calyx-kmods"
+LABEL org.opencontainers.image.description="Precompiled kernel modules and tools for Calyx bootc system"

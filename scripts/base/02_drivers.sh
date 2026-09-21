@@ -3,6 +3,35 @@ set -eoux pipefail
 
 echo "==================== [$(basename "$0")] START ===================="
 
+# 0. 动态内核版本一致性断言校验 (Fail-Fast Assertion)
+CURRENT_KERNEL=$(rpm -q --queryformat "%{VERSION}-%{RELEASE}.%{ARCH}" kernel-core | head -n1)
+echo "==> 检测当前基础镜像内核: ${CURRENT_KERNEL}"
+if [ -n "${KERNEL_VERSION:-}" ]; then
+    echo "==> 目标锁定内核版本:   ${KERNEL_VERSION}"
+    if [ "${CURRENT_KERNEL}" != "${KERNEL_VERSION}" ]; then
+        echo "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
+        echo "FATAL ERROR: 内核版本不匹配！"
+        echo "驱动镜像锁定版本: ${KERNEL_VERSION}"
+        echo "基础镜像实际内核: ${CURRENT_KERNEL}"
+        echo "构建已强制中断，避免生成驱动损坏的无效系统镜像！"
+        echo "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
+        exit 1
+    fi
+fi
+
+# 确保内核驱动目标目录已成功通过多阶段 COPY 注入
+MODULES_DIR="/usr/lib/modules/${CURRENT_KERNEL}/extra"
+if [ ! -d "${MODULES_DIR}" ]; then
+    echo "FATAL ERROR: 驱动模块目录 ${MODULES_DIR} 不存在，请检查 kmods 阶段构建！"
+    exit 1
+fi
+
+# 若未启用 NVIDIA，则清理 nvidia 模块并仅保留 v4l2loopback 与 ntfs
+if [ "${NVIDIA_ENABLED}" != "true" ]; then
+    echo "==> NVIDIA 未启用，清理 extra/nvidia 驱动模块..."
+    rm -rf "${MODULES_DIR}/nvidia"
+fi
+
 # 1. 确保 RPM Fusion Free / Nonfree 仓库已安装
 if ! rpm -q rpmfusion-free-release &>/dev/null; then
     dnf5 -y install https://mirrors.rpmfusion.org/free/fedora/rpmfusion-free-release-$(rpm -E %fedora).noarch.rpm || true
