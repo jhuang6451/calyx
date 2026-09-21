@@ -24,7 +24,6 @@ curl --retry 3 -Lo /etc/flatpak/remotes.d/flathub.flatpakrepo https://dl.flathub
 systemctl enable tailscaled.service               # Package: tailscale
 systemctl enable input-remapper.service           # Package: input-remapper
 systemctl enable sshd.socket                      # OpenSSH 按需连接 Socket 服务
-systemctl enable calyx-ssh-provision.service       # 自动注入 authorized_keys 并确保 SELinux 合规
 systemctl enable usr-share-sddm-themes.mount      # source/configs/base
 systemctl enable flatpak-nuke-fedora.service      # source/configs/base
 
@@ -42,12 +41,8 @@ systemctl disable flatpak-add-fedora-repos.service
 systemctl mask flatpak-add-fedora-repos.service
 rm -f /usr/lib/systemd/system/flatpak-add-fedora-repos.service
 
-# 5. 确保 SSH 配置及公钥文件具有合规严格的安全权限
-chmod 0755 /etc/ssh/sshd_config.d /etc/ssh/authorized_keys.d 2>/dev/null || true
-chmod 0644 /etc/ssh/sshd_config.d/* /etc/ssh/authorized_keys.d/* 2>/dev/null || true
-if [ -d /etc/skel/.ssh ]; then
-    chmod 0700 /etc/skel/.ssh
-    chmod 0600 /etc/skel/.ssh/authorized_keys 2>/dev/null || true
-fi
+# 5. 确保 SSH 配置目录及文件权限合规
+chmod 0755 /etc/ssh/sshd_config.d 2>/dev/null || true
+chmod 0644 /etc/ssh/sshd_config.d/* 2>/dev/null || true
 
 echo "==================== [$(basename "$0")] END ===================="
