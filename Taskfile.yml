@@ -60,20 +60,27 @@ tasks:
         vars:
           NVIDIA: 'true'
 
-  build-server:
-    desc: "远程在 fedora-server 上执行构建与推送 (用法: task build-server NVIDIA=true)"
+  build-and-push:
+    desc: "一键构建并推送系统镜像至私有仓 (用法: task build-and-push NVIDIA=true)"
     cmds:
-      - 'echo "==> 同步代码至 fedora-server:~/calyx ..."'
-      - rsync -avz --exclude='.git' --exclude='.kernel-lock' ./ fedora-server:~/calyx/
-      - 'echo "==> 在 fedora-server 上执行构建与推送..."'
-      - ssh fedora-server 'cd ~/calyx && task build {{if eq .NVIDIA "true"}}NVIDIA=true{{end}} && task push {{if eq .NVIDIA "true"}}NVIDIA=true{{end}}'
+      - task: build
+        vars:
+          NVIDIA: '{{.NVIDIA}}'
+      - task: push
+        vars:
+          NVIDIA: '{{.NVIDIA}}'
 
-  build-server-nvidia:
-    desc: "快捷远程在 fedora-server 构建与推送 NVIDIA 系统镜像"
+  build-and-push-nvidia:
+    desc: "快捷一键构建并推送 NVIDIA 系统镜像"
     cmds:
-      - task: build-server
+      - task: build-and-push
         vars:
           NVIDIA: 'true'
+
+  auto-build:
+    desc: "全自动构建流水线 (含 git pull、构建驱动、构建镜像、推送与清理)"
+    cmds:
+      - ./scripts/auto-build.sh
 
   push:
     desc: "推送系统镜像至本地私有仓并执行版本淘汰 (用法: task push NVIDIA=true)"

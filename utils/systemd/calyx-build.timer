@@ -1,0 +1,12 @@
+[Unit]
+Description=Trigger automated weekly Calyx bootc build
+ConditionPathExists=%h/calyx
+
+[Timer]
+# 每周日凌晨 04:00 自动触发构建
+OnCalendar=Sun *-*-* 04:00:00
+RandomizedDelaySec=1800
+Persistent=true
+
+[Install]
+WantedBy=timers.target
