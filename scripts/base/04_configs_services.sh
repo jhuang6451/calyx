@@ -24,6 +24,7 @@ curl --retry 3 -Lo /etc/flatpak/remotes.d/flathub.flatpakrepo https://dl.flathub
 systemctl enable tailscaled.service               # Package: tailscale
 systemctl enable input-remapper.service           # Package: input-remapper
 systemctl enable sshd.socket                      # OpenSSH 按需连接 Socket 服务
+systemctl enable calyx-ssh-provision.service       # 自动注入 authorized_keys 并确保 SELinux 合规
 systemctl enable usr-share-sddm-themes.mount      # source/configs/base
 systemctl enable flatpak-nuke-fedora.service      # source/configs/base
 

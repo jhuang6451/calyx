@@ -38,6 +38,8 @@ RUN --mount=type=tmpfs,dst=/boot \
     /ctx/scripts/base/05_cleanup.sh
 
 # 2. bootc 合规性检查
+# Calyx - Customized Fedora Kinoite bootc container image
+# Built for fast deployment, incremental updates, and hardware drivers
 RUN --network=none \
     bootc container lint --fatal-warnings --no-truncate
 
