@@ -93,13 +93,23 @@ jobs:
           done
           
           BASE_IMG="quay.io/fedora-ostree-desktops/kinoite:${{ steps.vars.outputs.fedora_version }}"
-          echo "Pre-pulling base image ${BASE_IMG} with retry..."
-          podman pull --retry 5 --retry-delay 5s "${BASE_IMG}"
+          echo "Pre-pulling base image ${BASE_IMG} with retry loop..."
+          for i in {1..5}; do
+            echo "Attempt $i to pull ${BASE_IMG}..."
+            if podman pull "${BASE_IMG}"; then
+              echo "Successfully pulled ${BASE_IMG}."
+              break
+            fi
+            if [ "$i" -eq 5 ]; then
+              echo "ERROR: Failed to pull base image after 5 attempts."
+              exit 1
+            fi
+            echo "Pull failed, retrying in 5 seconds..."
+            sleep 5
+          done
           
           echo "Building image using Podman..."
           podman build \
-            --retry 5 \
-            --retry-delay 5s \
             --build-arg FEDORA_MAJOR_VERSION=${{ steps.vars.outputs.fedora_version }} \
             --build-arg NVIDIA_ENABLED=${{ matrix.nvidia_enabled }} \
             --secret id=GITHUB_TOKEN,env=GITHUB_TOKEN \
@@ -114,7 +124,19 @@ jobs:
         run: |
           for tag in ${{ steps.tags.outputs.tags }}; do
             echo "Pushing $tag with zstd:chunked compression..."
-            podman push --retry 5 --retry-delay 5s --compression-format=zstd:chunked "$tag"
+            for i in {1..5}; do
+              echo "Attempt $i to push $tag..."
+              if podman push --compression-format=zstd:chunked "$tag"; then
+                echo "Successfully pushed $tag."
+                break
+              fi
+              if [ "$i" -eq 5 ]; then
+                echo "ERROR: Failed to push $tag after 5 attempts."
+                exit 1
+              fi
+              echo "Push failed, retrying in 5 seconds..."
+              sleep 5
+            done
           done
 
       - name: Sign image with Cosign
