@@ -122,29 +122,43 @@ jobs:
         if: github.event_name != 'pull_request'
         id: push-to-ghcr
         run: |
-          for tag in ${{ steps.tags.outputs.tags }}; do
-            echo "Pushing $tag with zstd:chunked compression..."
-            for i in {1..5}; do
-              echo "Attempt $i to push $tag..."
-              if podman push --compression-format=zstd:chunked "$tag"; then
-                echo "Successfully pushed $tag."
-                break
-              fi
-              if [ "$i" -eq 5 ]; then
-                echo "ERROR: Failed to push $tag after 5 attempts."
-                exit 1
-              fi
-              echo "Push failed, retrying in 5 seconds..."
-              sleep 5
-            done
+          TAGS=(${{ steps.tags.outputs.tags }})
+          PRIMARY_TAG="${TAGS[0]}"
+          
+          echo "Pushing primary tag $PRIMARY_TAG with zstd:chunked compression..."
+          for i in {1..5}; do
+            echo "Attempt $i to push $PRIMARY_TAG..."
+            if podman push --compression-format=zstd:chunked "$PRIMARY_TAG"; then
+              echo "Successfully pushed $PRIMARY_TAG."
+              break
+            fi
+            if [ "$i" -eq 5 ]; then
+              echo "ERROR: Failed to push $PRIMARY_TAG after 5 attempts."
+              exit 1
+            fi
+            echo "Push failed, retrying in 5 seconds..."
+            sleep 5
+          done
+
+          # 对其余标签使用 skopeo copy 进行秒级服务端打标（无需重复压缩与重新上传任何数据块）
+          for tag in "${TAGS[@]:1}"; do
+            echo "Fast-tagging $tag from $PRIMARY_TAG via skopeo (server-side copy)..."
+            skopeo copy \
+              --src-creds "${{ github.actor }}:${{ secrets.GITHUB_TOKEN }}" \
+              --dest-creds "${{ github.actor }}:${{ secrets.GITHUB_TOKEN }}" \
+              "docker://${PRIMARY_TAG}" \
+              "docker://${tag}"
+            echo "Successfully tagged $tag."
           done
 
       - name: Sign image with Cosign
         if: github.event_name != 'pull_request'
         run: |
-          for tag in ${{ steps.tags.outputs.tags }}; do
+          TAGS=(${{ steps.tags.outputs.tags }})
+          PRIMARY_TAG="${TAGS[0]}"
+          DIGEST=$(skopeo inspect "docker://$PRIMARY_TAG" --format '{{.Digest}}')
+          echo "Found digest: $DIGEST"
+          for tag in "${TAGS[@]}"; do
             echo "Signing $tag..."
-            DIGEST=$(skopeo inspect "docker://$tag" --format '{{.Digest}}')
-            echo "Found digest: $DIGEST for $tag"
             cosign sign --yes "$tag@$DIGEST"
           done
