@@ -10,7 +10,6 @@ vars:
         echo "192.168.31.4:5000"
       fi
   REGISTRY: '{{.REGISTRY | default .DEFAULT_REGISTRY}}'
-  PUBLIC_REGISTRY: 'registry.elix1r.top'
   IMAGE_NAME: 'calyx'
   NVIDIA: 'false'
 
@@ -63,8 +62,6 @@ tasks:
         --build-arg REGISTRY={{.REGISTRY}}
         -t {{.REGISTRY}}/{{.IMAGE_NAME}}:{{.FULL_TAG}}
         -t {{.REGISTRY}}/{{.IMAGE_NAME}}:latest{{.NVIDIA_SUFFIX}}
-        -t {{.PUBLIC_REGISTRY}}/{{.IMAGE_NAME}}:{{.FULL_TAG}}
-        -t {{.PUBLIC_REGISTRY}}/{{.IMAGE_NAME}}:latest{{.NVIDIA_SUFFIX}}
         -f Containerfile .
       - 'echo "构建完成！系统镜像: {{.REGISTRY}}/{{.IMAGE_NAME}}:{{.FULL_TAG}}"'
 
